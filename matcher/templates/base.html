@@ -1,0 +1,33 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Resume Matcher Pro</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" crossorigin="anonymous" />
+        <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+        
+      </head>
+<body>
+    <header style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem;">
+        <img src="{% static 'images/Nouvelair-Logo-500x281.png' %}" alt="Logo" style="height: 60px;">
+        <div style="flex-grow: 1; text-align: center;">
+          <h1 style="margin: 0;">Resume Matcher </h1>
+          <p style="margin: 0.3rem 0 0;">AI-powered resume matching with comprehensive analytics</p>
+        </div>
+      </header>
+  <nav>
+    <a href="{% url 'jobs' %}">Jobs</a>
+    <a href="{% url 'resumes' %}">Resumes</a>
+    <a href="{% url 'matching' %}">Matching</a>
+    <a href="{% url 'analytics' %}">Analytics</a>
+    <a href="{% url 'manage_jobs' %}">Manage Jobs</a>
+  </nav>
+
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>
