@@ -1,0 +1,94 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background: #f4f7fa;
+    color: #333;
+  }
+  header {
+    background: #f8fafc;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    text-align: center;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+  }
+  header p {
+    margin-top: 0.3rem;
+    color: #555;
+  }
+  nav {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    background: white;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  nav a {
+    text-decoration: none;
+    font-weight: bold;
+    color: #444;
+  }
+  .container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2rem;
+    padding: 2rem;
+  }
+  .card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    width: 400px;
+    max-width: 90%;
+  }
+  .card h2 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+  }
+  textarea {
+    width: 100%;
+    height: 150px;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .upload-box, .empty-state {
+    text-align: center;
+    padding: 1rem;
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+  }
+  .btn-primary, .btn-danger {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  .btn-primary {
+    background: #4f46e5;
+    color: white;
+  }
+  .btn-danger {
+    background: #dc2626;
+    color: white;
+    margin-top: 2rem;
+  }
+  .dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .dashboard .metric {
+    background: #fff;
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  

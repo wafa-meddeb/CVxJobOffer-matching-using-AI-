@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="card">
+    <h2>Add Job Offer</h2>
+    <textarea id="jobText" placeholder="Paste the complete job offer here..." rows="12"></textarea>
+    <button class="btn-primary" onclick="submitJobOffer()">Create Job Offer</button>
+  </div>
+
+  <div class="card empty-state">
+    <h2>No Jobs Available</h2>
+    <p>Create your first job offer to get started</p>
+  </div>
+
+  <pre id="responseBox" style="margin-top: 1rem;"></pre>
+
+  <script>
+    function submitJobOffer() {
+      const text = document.getElementById("jobText").value;
+
+      fetch('/create-job/', {
+
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text })
+      })
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById("responseBox").textContent = JSON.stringify(data, null, 2);
+      })
+      .catch(error => {
+        document.getElementById("responseBox").textContent = "Error: " + error;
+      });
+    }
+  </script>
+{% endblock %}

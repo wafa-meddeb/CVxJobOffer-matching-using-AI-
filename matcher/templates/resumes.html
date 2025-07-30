@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <h2>Upload Resumes</h2>
+    <div class="upload-box">
+      <p><strong>Upload Resume Files</strong></p>
+      <input type="file" multiple />
+      <p>Supported format: PDF</p>
+    </div>
+    <div class="card" style="margin-top: 1rem;">
+      <h3>How it works:</h3>
+      <ul>
+        <li>Upload one or multiple resume files</li>
+        <li>Our system automatically extracts candidate info</li>
+        <li>Names, skills, experience levels are detected</li>
+        <li>Resumes are saved and ready for job matching</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card empty-state">
+    <h2>No Resumes Added</h2>
+    <p>Add resumes to begin the matching process</p>
+  </div>
+{% endblock %}
