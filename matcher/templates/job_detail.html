@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="job-detail-container">
+  <div class="job-detail-header">
+    <a href="{% url 'job_list' %}" class="back-btn">← Back to Jobs</a>
+    <div class="job-actions">
+      <a href="{% url 'job_edit' job.job_id %}" class="btn-primary">Edit Job</a>
+      <a href="{% url 'job_delete_confirm' job.job_id %}" class="btn-danger">Delete Job</a>
+    </div>
+  </div>
+
+  <div class="job-detail-card">
+    <div class="job-header">
+      <h1 class="job-title">{{ job.title }}</h1>
+      <div class="job-meta">
+        <span class="company">{{ job.company }}</span>
+        {% if job.location %}
+          <span class="location">📍 {{ job.location }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="job-details-section">
+      {% if job.contract_type or job.experience_level or job.salary_range %}
+        <div class="job-badges">
+          {% if job.contract_type %}
+            <span class="badge contract-type">{{ job.contract_type }}</span>
+          {% endif %}
+          {% if job.experience_level %}
+            <span class="badge experience">{{ job.experience_level }}</span>
+          {% endif %}
+          {% if job.salary_range %}
+            <span class="badge salary">💰 {{ job.salary_range }}</span>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <div class="job-description">
+        <h3>Job Description</h3>
+        <p>{{ job.description|linebreaks }}</p>
+      </div>
+
+      {% if job.technologies %}
+        <div class="technologies-section">
+          <h3>Required Technologies</h3>
+          <div class="tech-tags">
+            {% for tech in job.technologies %}
+              <span class="tech-tag">{{ tech }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% if job.languages %}
+        <div class="languages-section">
+          <h3>Programming Languages</h3>
+          <div class="tech-tags">
+            {% for lang in job.languages %}
+              <span class="tech-tag language-tag">{{ lang }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% if job.requirements %}
+        <div class="requirements-section">
+          <h3>Requirements</h3>
+          <ul class="requirements-list">
+            {% for req in job.requirements %}
+              <li>{{ req }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% if job.nice_to_have %}
+        <div class="nice-to-have-section">
+          <h3>Nice to Have</h3>
+          <ul class="nice-to-have-list">
+            {% for item in job.nice_to_have %}
+              <li>{{ item }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="job-footer">
+      <div class="job-meta-info">
+        <p><strong>Job ID:</strong> {{ job.job_id }}</p>
+        <p><strong>Database ID:</strong> {{ job.id }}</p>
+        <p><strong>Created:</strong> {{ job.created_at|date:"F d, Y \a\t g:i A" }}</p>
+        {% if job.updated_at %}
+          <p><strong>Last Updated:</strong> {{ job.updated_at|date:"F d, Y \a\t g:i A" }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .job-detail-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+
+  .job-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .back-btn {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+  }
+
+  .back-btn:hover {
+    background-color: #f8f9fa;
+  }
+
+  .job-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .job-detail-card {
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 1px solid #e1e5e9;
+  }
+
+  .job-header {
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .job-title {
+    margin: 0 0 1rem 0;
+    color: #2c3e50;
+    font-size: 2rem;
+  }
+
+  .job-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    color: #666;
+    font-size: 1.1rem;
+  }
+
+  .company {
+    font-weight: 600;
+    color: #3498db;
+  }
+
+  .job-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+
+  .badge {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .contract-type {
+    background: #e8f5e8;
+    color: #2d5a2d;
+  }
+
+  .experience {
+    background: #fff3cd;
+    color: #856404;
+  }
+
+  .salary {
+    background: #d1ecf1;
+    color: #0c5460;
+  }
+
+  .job-description, .technologies-section, .requirements-section {
+    margin-bottom: 2rem;
+  }
+
+  .job-description h3, .technologies-section h3, .requirements-section h3 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+  }
+
+  .job-description p {
+    line-height: 1.6;
+    color: #555;
+  }
+
+  .tech-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .tech-tag {
+    background: #f8f9fa;
+    color: #495057;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    border: 1px solid #dee2e6;
+  }
+
+  .requirements-list {
+    list-style-type: disc;
+    margin-left: 1.5rem;
+  }
+
+  .language-tag {
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #bbdefb;
+  }
+
+  .languages-section, .nice-to-have-section {
+    margin-bottom: 2rem;
+  }
+
+  .languages-section h3, .nice-to-have-section h3 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+  }
+
+  .nice-to-have-list {
+    list-style-type: circle;
+    margin-left: 1.5rem;
+    color: #666;
+  }
+
+  .nice-to-have-list li {
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+  }
+
+  .job-footer {
+    border-top: 2px solid #f0f0f0;
+    padding-top: 1.5rem;
+    margin-top: 2rem;
+  }
+
+  .job-meta-info p {
+    margin: 0.5rem 0;
+    color: #666;
+  }
+
+  .btn-primary, .btn-danger {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color 0.2s;
+    display: inline-block;
+  }
+
+  .btn-primary {
+    background: #007bff;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #0056b3;
+  }
+
+  .btn-danger {
+    background: #dc3545;
+    color: white;
+  }
+
+  .btn-danger:hover {
+    background: #c82333;
+  }
+
+  @media (max-width: 768px) {
+    .job-detail-header {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .job-actions {
+      justify-content: center;
+    }
+    
+    .job-title {
+      font-size: 1.5rem;
+    }
+  }
+</style>
+{% endblock %}

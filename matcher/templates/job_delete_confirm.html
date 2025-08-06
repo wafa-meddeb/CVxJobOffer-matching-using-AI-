@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="delete-confirm-container">
+  <div class="delete-confirm-card">
+    <div class="delete-icon">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" 
+              stroke="#dc3545" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <h1 class="delete-title">Delete Job Posting</h1>
+    
+    <div class="job-preview">
+      <h3>{{ job.title }}</h3>
+      <p class="company">{{ job.company }}</p>
+      {% if job.location %}
+        <p class="location">📍 {{ job.location }}</p>
+      {% endif %}
+      <p class="job-id">Job ID: {{ job.job_id }}</p>
+      <p class="db-id">Database ID: {{ job.id }}</p>
+    </div>
+
+    <div class="warning-message">
+      <p><strong>Are you sure you want to delete this job posting?</strong></p>
+      <p>This action cannot be undone. The job posting will be permanently removed from the system.</p>
+    </div>
+
+    <div class="delete-actions">
+      <form method="post" style="display: inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn-danger">Yes, Delete Job</button>
+      </form>
+      <a href="{% url 'job_detail' job.job_id %}" class="btn-secondary">Cancel</a>
+    </div>
+
+    <div class="back-link">
+      <a href="{% url 'job_list' %}">← Back to Job List</a>
+    </div>
+  </div>
+</div>
+
+<style>
+  .delete-confirm-container {
+    max-width: 500px;
+    margin: 4rem auto;
+    padding: 2rem 1rem;
+  }
+
+  .delete-confirm-card {
+    background: white;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border: 1px solid #e1e5e9;
+    text-align: center;
+  }
+
+  .delete-icon {
+    margin-bottom: 1.5rem;
+  }
+
+  .delete-title {
+    color: #2c3e50;
+    margin-bottom: 2rem;
+    font-size: 1.5rem;
+  }
+
+  .job-preview {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border-left: 4px solid #007bff;
+  }
+
+  .job-preview h3 {
+    margin: 0 0 0.5rem 0;
+    color: #2c3e50;
+    font-size: 1.25rem;
+  }
+
+  .job-preview .company {
+    color: #3498db;
+    font-weight: 600;
+    margin: 0.25rem 0;
+  }
+
+  .job-preview .location {
+    color: #666;
+    margin: 0.25rem 0;
+  }
+
+  .job-preview .job-id, .job-preview .db-id {
+    color: #666;
+    font-size: 0.9rem;
+    margin: 0.25rem 0;
+  }
+
+  .warning-message {
+    margin-bottom: 2rem;
+    text-align: left;
+  }
+
+  .warning-message p {
+    margin: 0.75rem 0;
+    color: #555;
+    line-height: 1.5;
+  }
+
+  .warning-message strong {
+    color: #dc3545;
+  }
+
+  .delete-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 2rem;
+  }
+
+  .btn-danger, .btn-secondary {
+    padding: 0.75rem 2rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: inline-block;
+    min-width: 140px;
+  }
+
+  .btn-danger {
+    background: #dc3545;
+    color: white;
+  }
+
+  .btn-danger:hover {
+    background: #c82333;
+  }
+
+  .btn-secondary {
+    background: #6c757d;
+    color: white;
+  }
+
+  .btn-secondary:hover {
+    background: #5a6268;
+  }
+
+  .back-link {
+    padding-top: 1.5rem;
+    border-top: 1px solid #e1e5e9;
+  }
+
+  .back-link a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .back-link a:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 768px) {
+    .delete-confirm-container {
+      margin: 2rem auto;
+    }
+    
+    .delete-confirm-card {
+      padding: 2rem 1.5rem;
+    }
+    
+    .delete-actions {
+      flex-direction: column;
+    }
+    
+    .btn-danger, .btn-secondary {
+      width: 100%;
+    }
+  }
+</style>
+{% endblock %}

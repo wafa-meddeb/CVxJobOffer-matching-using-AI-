@@ -1,10 +1,327 @@
 {% extends "base.html" %}
+
 {% block content %}
-  <div class="card empty-state">
-    <h2>No Job Offers Yet</h2>
-    <p>You haven’t posted any job offers yet. Create your first job posting to get started.</p>
-    <p style="margin-top: 1rem;">
-      <strong>💡 Tip:</strong> Use the “Jobs” tab to create your first job offer
-    </p>
-  </div>
+
+
+  {% if jobs %}
+    <div class="jobs-grid">
+      {% for job in jobs %}
+        <div class="job-card">
+          <div class="job-header">
+            <h3 class="job-title">{{ job.title }}</h3>
+            <div class="job-meta">
+              <span class="company">{{ job.company }}</span>
+              {% if job.location %}
+                <span class="location">📍 {{ job.location }}</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="job-body">
+            <p class="job-description">{{ job.description|truncatewords:20 }}</p>
+            
+            <div class="job-details">
+              {% if job.contract_type %}
+                <span class="badge contract-type">{{ job.contract_type }}</span>
+              {% endif %}
+              {% if job.experience_level %}
+                <span class="badge experience">{{ job.experience_level }}</span>
+              {% endif %}
+              {% if job.salary_range %}
+                <span class="badge salary">💰 {{ job.salary_range }}</span>
+              {% endif %}
+            </div>
+
+            {% if job.technologies %}
+              <div class="technologies">
+                <strong>Technologies:</strong>
+                {% for tech in job.technologies %}
+                  <span class="tech-tag">{{ tech }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            {% if job.requirements %}
+              <div class="requirements">
+                <strong>Key Requirements:</strong>
+                <ul>
+                  {% for req in job.requirements|slice:":3" %}
+                    <li>{{ req }}</li>
+                  {% endfor %}
+                  {% if job.requirements|length > 3 %}
+                    <li><em>... and {{ job.requirements|length|add:"-3" }} more</em></li>
+                  {% endif %}
+                </ul>
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="job-footer">
+            <div class="job-dates">
+              <small>Created: {{ job.created_at|date:"M d, Y" }}</small>
+              <small>ID: {{ job.job_id|slice:":8" }}...</small>
+            </div>
+            <div class="job-actions">
+              <a
+                href="{% url 'job_detail' job_id=job.job_id %}"
+                class="btn-secondary"
+              >
+                View
+              </a>
+              <a
+                href="{% url 'job_edit' job_id=job.job_id %}"
+                class="btn-primary"
+              >
+                Edit
+              </a>
+              <button
+                class="btn-danger"
+                onclick="deleteJob('{{ job.job_id }}', '{{ job.title }}')"
+              >
+                Delete
+              </button>
+            </div>
+            
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card empty-state">
+      <h2>No Job Offers Yet</h2>
+      <p>You haven't posted any job offers yet. Create your first job posting to get started.</p>
+      <p style="margin-top: 1rem;">
+        <strong>💡 Tip:</strong> Use the "Jobs" tab to create your first job offer
+      </p>
+      <a href="{% url 'jobs' %}" class="btn-primary" style="margin-top: 1rem;">Create First Job</a>
+    </div>
+  {% endif %}
+
+  <style>
+    .jobs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1rem;
+    }
+
+    .job-card {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      border: 1px solid #e1e5e9;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .job-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .job-header {
+      border-bottom: 1px solid #f0f0f0;
+      padding-bottom: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .job-title {
+      margin: 0 0 0.5rem 0;
+      color: #2c3e50;
+      font-size: 1.25rem;
+    }
+
+    .job-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    .company {
+      font-weight: 600;
+      color: #3498db;
+    }
+
+    .location {
+      color: #666;
+    }
+
+    .job-description {
+      color: #555;
+      line-height: 1.5;
+      margin-bottom: 1rem;
+    }
+
+    .job-details {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .badge {
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .contract-type {
+      background: #e8f5e8;
+      color: #2d5a2d;
+    }
+
+    .experience {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .salary {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .technologies {
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .tech-tag {
+      display: inline-block;
+      background: #f8f9fa;
+      color: #495057;
+      padding: 0.2rem 0.5rem;
+      border-radius: 3px;
+      font-size: 0.75rem;
+      margin: 0.2rem 0.3rem 0.2rem 0;
+      border: 1px solid #dee2e6;
+    }
+
+    .requirements {
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .requirements ul {
+      margin: 0.5rem 0 0 1rem;
+      padding: 0;
+    }
+
+    .requirements li {
+      margin-bottom: 0.25rem;
+      color: #555;
+    }
+
+    .job-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 1rem;
+      border-top: 1px solid #f0f0f0;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .job-dates {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .job-dates small {
+      color: #666;
+      font-size: 0.75rem;
+    }
+
+    .job-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-secondary, .btn-primary, .btn-danger {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: background-color 0.2s;
+      width: 80px;
+      text-align: center;
+    }
+    
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+    
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+    
+    .btn-primary {
+      background: #007bff;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #0056b3;
+    }
+    
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+    
+    .btn-danger:hover {
+      background: #c82333;
+    }
+
+    @media (max-width: 768px) {
+      .jobs-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .job-footer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .job-actions {
+        justify-content: center;
+      }
+    }
+  </style>
+
+  <script>
+    function viewJob(jobId) {
+      // TODO: Implement view job details
+      alert('View job: ' + jobId);
+    }
+
+    function editJob(jobId) {
+      // TODO: Implement edit job functionality
+      alert('Edit job: ' + jobId);
+    }
+
+    function deleteJob(jobId, title) {
+      if (confirm(`Are you sure you want to delete "${title}"?`)) {
+        // TODO: Implement delete job functionality
+        fetch(`/delete-job/${jobId}/`, {
+          method: 'DELETE',
+          headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+          }
+        })
+        .then(response => {
+          if (response.ok) {
+            location.reload();
+          } else {
+            alert('Error deleting job');
+          }
+        });
+      }
+    }
+  </script>
 {% endblock %}

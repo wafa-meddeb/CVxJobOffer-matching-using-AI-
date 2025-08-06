@@ -3,19 +3,20 @@ from django.contrib.postgres.fields import ArrayField
 from django.db.models import JSONField
 
 class JobOffer(models.Model):
-    job_id = models.CharField(max_length=255, unique=True)
+    id = models.CharField(max_length=255, primary_key=True)
     title = models.CharField(max_length=255)
     company = models.CharField(max_length=255)
-    location = models.CharField(max_length=255, blank=True)
+    location = models.CharField(max_length=255)
     description = models.TextField()
-    requirements = JSONField(default=list, blank=True)
-    nice_to_have = JSONField(default=list, blank=True)
-    contract_type = models.CharField(max_length=255, blank=True)
-    experience_level = models.CharField(max_length=255, blank=True)
-    languages = JSONField(default=list, blank=True)
-    technologies = JSONField(default=list, blank=True)
-    salary_range = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    contract_type = models.CharField(max_length=255)
+    experience_level = models.CharField(max_length=255)
+    job_id = models.CharField(max_length=255, unique=True)
+    languages = JSONField(default=list)
+    nice_to_have = JSONField(default=list)
+    requirements = JSONField(default=list)
+    salary_range = models.CharField(max_length=255)
+    technologies = JSONField(default=list)
 
     def build_prompt_job_offer(self, text):
         pass
