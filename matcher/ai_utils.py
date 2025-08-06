@@ -1,29 +1,59 @@
-import os
+# import osimport os
 import re
 import json
 import requests
+import base64
+import io
 from dotenv import load_dotenv
+from pdf2image import convert_from_path
+from PIL import Image
+import os
 
-# Load .env for local dev. In production, set HF_TOKEN as a real env var.
+# Load .env for local dev. In production, set GROQ_API_KEY as a real env var.
 load_dotenv()
 
-HF_TOKEN = os.getenv("HF_TOKEN")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 # Add this to test your token
-print(f"Token exists: {bool(HF_TOKEN)}")
-print(f"Token starts with: {HF_TOKEN[:10] if HF_TOKEN else 'None'}...")
-if not HF_TOKEN:
-    raise RuntimeError("HF_TOKEN is missing. Add it to .env or your deployment environment.")
+print(f"API Key exists: {bool(GROQ_API_KEY)}")
+print(f"API Key starts with: {GROQ_API_KEY[:10] if GROQ_API_KEY else 'None'}...")
+if not GROQ_API_KEY:
+    raise RuntimeError("GROQ_API_KEY is missing. Add it to .env or your deployment environment.")
 
-# ---- Hugging Face Router (chat completions) ----
-ROUTER_URL = "https://router.huggingface.co/v1/chat/completions"
-# IMPORTANT: model id includes the provider suffix. This came from the model page's 'Use this model' code.
-# You can switch provider if needed (e.g., ':hf-inference', ':fireworks-ai', ':together-ai', etc.)
-MODEL_ID = "HuggingFaceH4/zephyr-7b-alpha:featherless-ai"
+# ---- Groq API Configuration ----
+ROUTER_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+# Text models
+TEXT_MODEL = "llama3-8b-8192"  # Your existing text model
+# Vision model
+VISION_MODEL = "llava-v1.5-7b-4096-preview"  # For image/PDF processing
 
 HEADERS = {
-    "Authorization": f"Bearer {HF_TOKEN}",
+    "Authorization": f"Bearer {GROQ_API_KEY}",
     "Content-Type": "application/json",
 }
+
+# ---------------- Image/PDF Helpers ----------------
+
+def encode_image_to_base64(image_path):
+    """Convert image file to base64 string"""
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode('utf-8')
+
+def pil_image_to_base64(pil_image):
+    """Convert PIL Image to base64 string"""
+    buffer = io.BytesIO()
+    pil_image.save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+def pdf_to_images(pdf_path, dpi=150, max_pages=5):
+    """Convert PDF to list of PIL images"""
+    try:
+        images = convert_from_path(pdf_path, dpi=dpi)
+        print(f"Converted PDF to {len(images)} images (processing first {max_pages})")
+        return images[:max_pages]  # Limit pages to save tokens
+    except Exception as e:
+        print(f"Error converting PDF: {e}")
+        return []
 
 # ---------------- Prompt Builders ----------------
 
@@ -44,6 +74,20 @@ Resume:
 Return ONLY valid JSON (no prose, no markdown fences).
 """
 
+def build_prompt_cv_vision() -> str:
+    return """You are an HR assistant. Extract the following fields from this CV/resume image in pure JSON format:
+Fields:
+- name, email, phone
+- summary
+- skills (list of strings)
+- education (list of objects with degree, school, years)
+- experience (list of objects with title, company, years)
+- languages (list of strings)
+- certificates (list of strings)
+
+Read all text carefully from the image and return ONLY valid JSON (no prose, no markdown fences).
+"""
+
 def build_prompt_job_offer(text: str) -> str:
     return f"""You are an HR assistant. Extract this job offer into JSON with:
 - title, company, location, description
@@ -58,39 +102,18 @@ Job offer:
 Return ONLY valid JSON (no prose, no markdown fences).
 """
 
-# ---------------- JSON Extraction ----------------
+def build_prompt_job_offer_vision() -> str:
+    return """You are an HR assistant. Extract this job offer from the image into JSON with:
+- title, company, location, description
+- requirements (list of strings)
+- nice_to_have (list of strings)  
+- contract_type, experience_level
+- languages (list), technologies (list), salary_range
 
-# def extract_json_from_text(text: str) -> dict:
-#     """
-#     Find first balanced JSON object in text and parse it.
-#     Removes trailing commas before closing } or ].
-#     """
-#     start = text.find("{")
-#     if start == -1:
-#         raise ValueError("No opening brace found in model output.")
+Read all text carefully from the image and return ONLY valid JSON (no prose, no markdown fences).
+"""
 
-#     brace_count = 0
-#     end_index = None
-#     for i, ch in enumerate(text[start:], start=start):
-#         if ch == "{":
-#             brace_count += 1
-#         elif ch == "}":
-#             brace_count -= 1
-#         if brace_count == 0:
-#             end_index = i + 1
-#             break
-#     if end_index is None:
-#         raise ValueError("Unbalanced braces in model output.")
-
-#     json_str = text[start:end_index]
-#     # remove trailing commas before } or ]
-#     json_str = re.sub(r",\s*([\]}])", r"\1", json_str)
-
-#     try:
-#         return json.loads(json_str)
-#     except Exception as e:
-#         raise ValueError(f"Error parsing JSON: {e}\n--- Raw snippet ---\n{json_str[:500]}")
-
+# ---------------- JSON Extraction (Your existing function) ----------------
 
 def extract_json_from_text(text: str) -> dict:
     """
@@ -211,14 +234,15 @@ def extract_json_from_text(text: str) -> dict:
                 
             except Exception as regex_error:
                 raise ValueError(f"Error parsing JSON: {e}\nRegex fallback failed: {regex_error}\nRaw JSON: {json_text[:500]}")
-# ---------------- Router Call Helper ----------------
 
-def _chat_completion(messages, temperature: float = 0.2, max_tokens: int = 800, timeout_s: int = 60) -> str:
+# ---------------- Router Call Helpers ----------------
+
+def _chat_completion(messages, model=TEXT_MODEL, temperature: float = 0.2, max_tokens: int = 800, timeout_s: int = 60) -> str:
     """
-    Call HF Router chat completions and return the assistant message content (string).
+    Call Groq API chat completions and return the assistant message content (string).
     """
     payload = {
-        "model": MODEL_ID,
+        "model": model,
         "messages": messages,  # list of {"role": "user"/"system"/"assistant", "content": "..."}
         "temperature": temperature,
         "max_tokens": max_tokens,
@@ -238,7 +262,48 @@ def _chat_completion(messages, temperature: float = 0.2, max_tokens: int = 800, 
     except Exception:
         raise RuntimeError(f"Unexpected Router response format: {data}")
 
-# ---------------- Public Parsing Functions ----------------
+def _vision_completion(prompt, base64_image, temperature: float = 0.2, max_tokens: int = 1000, timeout_s: int = 90) -> str:
+    """
+    Call Groq Vision API with image and text prompt.
+    """
+    payload = {
+        "model": VISION_MODEL,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": prompt
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{base64_image}"
+                        }
+                    }
+                ]
+            }
+        ],
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    
+    try:
+        resp = requests.post(ROUTER_URL, headers=HEADERS, json=payload, timeout=timeout_s)
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"Vision API request failed: {e}")
+
+    if resp.status_code != 200:
+        raise RuntimeError(f"Vision API error {resp.status_code}: {resp.text[:400]}")
+
+    data = resp.json()
+    try:
+        return data["choices"][0]["message"]["content"]
+    except Exception:
+        raise RuntimeError(f"Unexpected Vision API response format: {data}")
+
+# ---------------- Public Parsing Functions (Text) ----------------
 
 def parse_cv_with_llm(cv_text: str) -> dict:
     """
@@ -260,4 +325,65 @@ def parse_job_offer_with_llm(job_text: str) -> dict:
         {"role": "system", "content": "You are a precise JSON extractor for HR."},
         {"role": "user", "content": prompt},
     ])
+    return extract_json_from_text(content.strip())
+
+# ---------------- NEW: Vision-Based Parsing Functions ----------------
+
+def parse_cv_from_image(image_path: str) -> dict:
+    """
+    Parse CV from an image file using vision model.
+    """
+    base64_image = encode_image_to_base64(image_path)
+    prompt = build_prompt_cv_vision()
+    
+    content = _vision_completion(prompt, base64_image)
+    return extract_json_from_text(content.strip())
+
+def parse_cv_from_pdf(pdf_path: str, max_pages: int = 3) -> dict:
+    """
+    Parse CV from PDF by converting to images and processing with vision model.
+    Combines results from multiple pages.
+    """
+    images = pdf_to_images(pdf_path, max_pages=max_pages)
+    if not images:
+        raise ValueError("Failed to convert PDF to images")
+    
+    # Process first page (usually contains main info)
+    first_image_b64 = pil_image_to_base64(images[0])
+    prompt = build_prompt_cv_vision()
+    
+    print(f"Processing CV from PDF page 1/{len(images)}...")
+    content = _vision_completion(prompt, first_image_b64)
+    
+    # For multi-page PDFs, you might want to process additional pages
+    # and merge the results, but for now we'll use just the first page
+    # to stay within token limits
+    
+    return extract_json_from_text(content.strip())
+
+def parse_job_offer_from_image(image_path: str) -> dict:
+    """
+    Parse job offer from an image file using vision model.
+    """
+    base64_image = encode_image_to_base64(image_path)
+    prompt = build_prompt_job_offer_vision()
+    
+    content = _vision_completion(prompt, base64_image)
+    return extract_json_from_text(content.strip())
+
+def parse_job_offer_from_pdf(pdf_path: str, max_pages: int = 3) -> dict:
+    """
+    Parse job offer from PDF by converting to images and processing with vision model.
+    """
+    images = pdf_to_images(pdf_path, max_pages=max_pages)
+    if not images:
+        raise ValueError("Failed to convert PDF to images")
+    
+    # Process first page
+    first_image_b64 = pil_image_to_base64(images[0])
+    prompt = build_prompt_job_offer_vision()
+    
+    print(f"Processing job offer from PDF page 1/{len(images)}...")
+    content = _vision_completion(prompt, first_image_b64)
+    
     return extract_json_from_text(content.strip())
