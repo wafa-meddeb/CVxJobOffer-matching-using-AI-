@@ -1,11 +1,2676 @@
 {% extends "base.html" %}
+// Show temporary feedback message
+    function showTemporaryMessage(message, type = 'info') {
+      // Remove existing message if any
+      const existingMessage = document.querySelector('.temp-message');
+      if (existingMessage) {
+        existingMessage.remove();
+      }
+      
+      // Create message element
+      const messageEl = document.createElement('div');
+      messageEl.className = `temp-message temp-message-${type}`;
+      
+      let icon = 'info-circle;}
 {% block content %}
-  <div class="card empty-state">
-    <h2>No Jobs Available</h2>
-    <p>Create your first job offer to get started</p>
+  <!-- Enhanced container for better layout -->
+  <div class="matcher-container">
+    
+    <!-- Page header -->
+    <div class="page-header">
+      <h2 class="page-title">
+        <i class="fas fa-brain"></i>
+        AI Resume Matcher
+      </h2>
+      <p class="page-subtitle">
+        Select job offers and resumes to find the perfect candidates using intelligent matching algorithms
+      </p>
+    </div>
+
+    <!-- Main matching section -->
+    <div class="main-section">
+      <!-- Jobs and Resumes Grid -->
+      <div class="selection-grid">
+        
+        <!-- Jobs Card -->
+        <div class="main-card">
+          <div class="card-header">
+            <div class="header-content">
+              <h3 class="card-title">
+                <i class="fas fa-briefcase"></i>
+                Job Offers
+              </h3>
+              <span class="count-badge" id="jobs-count">0</span>
+            </div>
+          </div>
+          
+          <div id="jobs-container" class="card-content">
+            <div class="loading-state">
+              <div class="spinner"></div>
+              <p>Loading job offers...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resumes Card -->
+        <div class="main-card">
+          <div class="card-header">
+            <div class="header-content">
+              <h3 class="card-title">
+                <i class="fas fa-file-alt"></i>
+                Resumes
+              </h3>
+              <span class="count-badge" id="resumes-count">0</span>
+            </div>
+            <div class="selection-controls">
+              <div class="selection-info">
+                <i class="fas fa-check-circle"></i>
+                <span id="selected-count">0</span> selected
+              </div>
+              <div class="select-all-controls">
+                <button id="select-all-btn" class="btn-select-all" onclick="selectAllResumes()" disabled>
+                  <i class="fas fa-check-double"></i>
+                  Select All
+                </button>
+                <button id="clear-all-btn" class="btn-clear-all" onclick="clearAllResumes()" disabled>
+                  <i class="fas fa-times"></i>
+                  Clear All
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div id="resumes-container" class="card-content">
+            <div class="loading-state">
+              <div class="spinner"></div>
+              <p>Loading resumes...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Matching Section -->
+      <div class="main-card matching-section">
+        <div class="card-header">
+          <div class="header-content">
+            <h3 class="card-title">
+              <i class="fas fa-chart-line"></i>
+              Matching Analysis
+            </h3>
+            <button id="match-btn" class="btn btn-primary" onclick="performMatching()" disabled>
+              <i class="fas fa-search"></i>
+              Select Job & Resumes to Match
+            </button>
+          </div>
+        </div>
+        
+        <div id="matching-results" class="card-content">
+          <div class="empty-state">
+            <div class="empty-icon">
+              <i class="fas fa-search"></i>
+            </div>
+            <h3>Ready for Analysis</h3>
+            <p>Select a job offer and at least one resume to run intelligent matching analysis</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- How it works section -->
+    <div class="info-section">
+      <h3 class="info-title">
+        <i class="fas fa-info-circle"></i>
+        How Matching Works
+      </h3>
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-step">1</div>
+          <i class="fas fa-briefcase"></i>
+          <h4>Select Job</h4>
+          <p>Choose the job position you want to find candidates for</p>
+        </div>
+        <div class="info-card">
+          <div class="info-step">2</div>
+          <i class="fas fa-users"></i>
+          <h4>Pick Resumes</h4>
+          <p>Select one or multiple candidate resumes to analyze</p>
+        </div>
+        <div class="info-card">
+          <div class="info-step">3</div>
+          <i class="fas fa-brain"></i>
+          <h4>AI Analysis</h4>
+          <p>Our AI compares skills, experience, and requirements intelligently</p>
+        </div>
+        <div class="info-card">
+          <div class="info-step">4</div>
+          <i class="fas fa-trophy"></i>
+          <h4>Get Results</h4>
+          <p>Receive ranked candidates with detailed match scores and insights</p>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="card empty-state">
-    <h2>No Job Selected</h2>
-    <p>Select a job offer to see matching results</p>
-  </div>
+
+  <style>
+    /* Base container styles */
+    .matcher-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    /* Page header */
+    .page-header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 3px solid #f1f5f9;
+    }
+
+    .page-title {
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: #1a202c;
+      margin: 0 0 1rem 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    .page-title i {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .page-subtitle {
+      color: #4a5568;
+      font-size: 1.2rem;
+      font-weight: 500;
+      margin: 0;
+      max-width: 700px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* Main section layout */
+    .main-section {
+      margin-bottom: 3rem;
+    }
+
+    .selection-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    /* Enhanced main card */
+    .main-card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e2e8f0;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .main-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Card header */
+    .card-header {
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      padding: 1.5rem 2rem;
+      border-bottom: 2px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #2d3748;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+
+    .card-title i {
+      color: #667eea;
+    }
+
+    .count-badge {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      min-width: 2rem;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    /* Selection controls */
+    .selection-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      align-items: flex-end;
+    }
+
+    .selection-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #4a5568;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background: #e6f3ff;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      border: 2px solid #b3d9ff;
+    }
+
+    .selection-info i {
+      color: #0066cc;
+    }
+
+    .select-all-controls {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    /* Select All / Clear All buttons */
+    .btn-select-all, .btn-clear-all {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      min-width: 90px;
+      justify-content: center;
+    }
+
+    .btn-select-all {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      border: 2px solid #10b981;
+    }
+
+    .btn-select-all:hover:not(:disabled) {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      border-color: #059669;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-clear-all {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      border: 2px solid #ef4444;
+    }
+
+    .btn-clear-all:hover:not(:disabled) {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      border-color: #dc2626;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-select-all:disabled, .btn-clear-all:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-select-all:disabled:hover, .btn-clear-all:disabled:hover {
+      transform: none;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Card content */
+    .card-content {
+      max-height: 600px;
+      overflow-y: auto;
+      position: relative;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e0 #f7fafc;
+    }
+
+    .card-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .card-content::-webkit-scrollbar-track {
+      background: #f7fafc;
+    }
+
+    .card-content::-webkit-scrollbar-thumb {
+      background: #cbd5e0;
+      border-radius: 3px;
+    }
+
+    .card-content::-webkit-scrollbar-thumb:hover {
+      background: #a0aec0;
+    }
+
+    /* Loading state */
+    .loading-state {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: #4a5568;
+      width: 100%;
+      padding: 2rem;
+      box-sizing: border-box;
+    }
+
+    .spinner {
+      border: 3px solid #f3f4f6;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    .loading-state p {
+      font-size: 1rem;
+      font-weight: 500;
+      margin: 0;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Item styles */
+    .job-item, .resume-item {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid #e2e8f0;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .job-item:hover, .resume-item:hover {
+      background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+      transform: translateX(5px);
+    }
+
+    .job-item:last-child, .resume-item:last-child {
+      border-bottom: none;
+    }
+
+    .job-item.selected, .resume-item.selected {
+      background: linear-gradient(135deg, #e6f3ff 0%, #cce7ff 100%);
+      border-left: 4px solid #667eea;
+      transform: translateX(0);
+    }
+
+    .job-item.selected::before, .resume-item.selected::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .checkbox-wrapper {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .radio, .checkbox {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #cbd5e0;
+      background: white;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-top: 2px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .radio {
+      border-radius: 50%;
+    }
+
+    .checkbox {
+      border-radius: 6px;
+    }
+
+    .radio:hover, .checkbox:hover {
+      border-color: #667eea;
+      transform: scale(1.1);
+    }
+
+    .radio.checked, .checkbox.checked {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-color: #667eea;
+      color: white;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .item-title {
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #2d3748;
+      margin-bottom: 0.5rem;
+      line-height: 1.3;
+    }
+
+    .item-meta {
+      color: #718096;
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .item-meta::before {
+      content: '';
+      display: inline-block;
+    }
+
+    .item-description {
+      color: #4a5568;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .skills-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .skill-tag {
+      background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
+      color: #4a5568;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid #cbd5e0;
+      transition: all 0.3s ease;
+    }
+
+    .skill-tag:hover {
+      background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+      transform: translateY(-1px);
+    }
+
+    .match-score {
+      font-weight: 800;
+      color: #059669;
+      font-size: 0.9rem;
+      background: #d1fae5;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      border: 1px solid #a7f3d0;
+    }
+
+    /* Enhanced buttons */
+    .btn {
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      min-width: 200px;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .btn:hover::before {
+      left: 100%;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn:disabled::before {
+      display: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: 2px solid #667eea;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #5a67d8 0%, #667eea 100%);
+      border-color: #5a67d8;
+    }
+
+    /* Empty state */
+    .empty-state {
+      padding: 4rem 2rem;
+      text-align: center;
+      color: #4a5568;
+    }
+
+    .empty-icon {
+      font-size: 4rem;
+      color: #cbd5e0;
+      margin-bottom: 1.5rem;
+    }
+
+    .empty-state h3 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #2d3748;
+      margin-bottom: 1rem;
+    }
+
+    .empty-state p {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      margin: 0;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    /* Matching section specific */
+    .matching-section {
+      grid-column: 1 / -1;
+    }
+
+    /* Results styles */
+    .results-header {
+      padding: 2rem;
+      border-bottom: 2px solid #e2e8f0;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    }
+
+    .results-header-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .results-header h3 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #2d3748;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .results-summary {
+      color: #718096;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background: #e6f3ff;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      border: 2px solid #b3d9ff;
+    }
+
+    /* Results Controls */
+    .results-controls {
+      margin-top: 1rem;
+    }
+
+    .filter-controls {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      background: white;
+      padding: 1.5rem;
+      border-radius: 15px;
+      border: 2px solid #e2e8f0;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .filter-group label {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #4a5568;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+      white-space: nowrap;
+    }
+
+    .filter-group label i {
+      color: #667eea;
+    }
+
+    /* Score Slider */
+    .score-slider {
+      width: 120px;
+      height: 6px;
+      border-radius: 3px;
+      background: #e2e8f0;
+      outline: none;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .score-slider::-webkit-slider-thumb {
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      cursor: pointer;
+      border: 2px solid white;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+      transition: all 0.3s ease;
+    }
+
+    .score-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .score-slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      cursor: pointer;
+      border: 2px solid white;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    #score-value {
+      font-weight: 700;
+      color: #667eea;
+      background: #e6f3ff;
+      padding: 0.25rem 0.75rem;
+      border-radius: 12px;
+      border: 1px solid #b3d9ff;
+      min-width: 45px;
+      text-align: center;
+      font-size: 0.85rem;
+    }
+
+    /* Number Input Wrapper */
+    .number-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      position: relative;
+    }
+
+    .results-input {
+      padding: 0.5rem 0.75rem;
+      border: 2px solid #cbd5e0;
+      border-radius: 10px;
+      background: white;
+      color: #4a5568;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 80px;
+      text-align: center;
+    }
+
+    .results-input:hover {
+      border-color: #667eea;
+    }
+
+    .results-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .results-input::-webkit-outer-spin-button,
+    .results-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .results-input[type=number] {
+      -moz-appearance: textfield;
+    }
+
+    .input-suffix {
+      font-size: 0.8rem;
+      color: #718096;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* Results Select (keeping for backwards compatibility) */
+    .results-select {
+      padding: 0.5rem 1rem;
+      border: 2px solid #cbd5e0;
+      border-radius: 10px;
+      background: white;
+      color: #4a5568;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-width: 120px;
+    }
+
+    .results-select:hover {
+      border-color: #667eea;
+    }
+
+    .results-select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    /* Export Button */
+    .btn-export {
+      padding: 0.75rem 1.5rem;
+      background: linear-gradient(135deg, #16a085 0%, #117a65 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 12px rgba(22, 160, 133, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-export::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .btn-export:hover::before {
+      left: 100%;
+    }
+
+    .btn-export:hover {
+      background: linear-gradient(135deg, #117a65 0%, #0e6b5d 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(22, 160, 133, 0.4);
+    }
+
+    .btn-export:active {
+      transform: translateY(0);
+    }
+
+    /* Reset Button */
+    .btn-reset {
+      padding: 0.75rem 1.5rem;
+      background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+      margin-top: 1rem;
+    }
+
+    .btn-reset:hover {
+      background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(107, 114, 128, 0.4);
+    }
+
+    /* No Results Message */
+    .no-results-message {
+      padding: 4rem 2rem;
+      text-align: center;
+      color: #4a5568;
+    }
+
+    .no-results-message .empty-icon {
+      font-size: 4rem;
+      color: #cbd5e0;
+      margin-bottom: 1.5rem;
+    }
+
+    .no-results-message h3 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #2d3748;
+      margin-bottom: 1rem;
+    }
+
+    .no-results-message p {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      margin: 0 0 2rem 0;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .results-list {
+      padding: 1rem;
+    }
+
+    .result-item {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 15px;
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .result-item:hover {
+      border-color: #cbd5e0;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .result-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .result-header {
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #f8fafc 0%, #edf2f7 100%);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .candidate-info h4 {
+      margin: 0 0 0.5rem 0;
+      color: #2d3748;
+      font-weight: 800;
+      font-size: 1.2rem;
+    }
+
+    .candidate-title {
+      margin: 0;
+      color: #718096;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .score-badge {
+      padding: 0.75rem 1.5rem;
+      border-radius: 25px;
+      font-weight: 800;
+      font-size: 1rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border: 2px solid;
+    }
+
+    .score-badge.excellent {
+      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+      color: #065f46;
+      border-color: #34d399;
+    }
+
+    .score-badge.good {
+      background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+      color: #1e40af;
+      border-color: #60a5fa;
+    }
+
+    .score-badge.fair {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      color: #92400e;
+      border-color: #f59e0b;
+    }
+
+    .score-badge.poor {
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+      color: #dc2626;
+      border-color: #f87171;
+    }
+
+    .result-details {
+      padding: 1.5rem;
+    }
+
+    .score-breakdown {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .score-item {
+      background: #f8fafc;
+      padding: 1rem;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid #e2e8f0;
+    }
+
+    .score-label {
+      font-size: 0.75rem;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .score-value {
+      font-weight: 800;
+      color: #2d3748;
+      font-size: 1.1rem;
+    }
+
+    .score-value.final {
+      color: #667eea;
+      font-size: 1.3rem;
+    }
+
+    .matched-skills h5, .candidate-summary h5 {
+      margin: 0 0 1rem 0;
+      font-size: 1rem;
+      font-weight: 800;
+      color: #2d3748;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+
+    .skills-match {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .skill-match {
+      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+      color: #065f46;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid #34d399;
+    }
+
+    .candidate-summary p {
+      margin: 0;
+      color: #4a5568;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* Error state */
+    .error-state {
+      padding: 3rem 2rem;
+      text-align: center;
+      color: #dc2626;
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      border-radius: 15px;
+      border: 2px solid #fca5a5;
+      margin: 1rem;
+    }
+
+    .error-state h3 {
+      margin: 0 0 1rem 0;
+      color: #dc2626;
+      font-weight: 800;
+    }
+
+    .retry-button {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-top: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .retry-button:hover {
+      background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+      transform: translateY(-1px);
+    }
+
+    /* Info section */
+    .info-section {
+      background: linear-gradient(135deg, #e6f3ff 0%, #cce7ff 100%);
+      border-radius: 20px;
+      padding: 2.5rem;
+      border: 2px solid #b3d9ff;
+      margin-top: 3rem;
+    }
+
+    .info-title {
+      color: #0066cc;
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 2rem;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .info-card {
+      background: white;
+      border-radius: 15px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      border: 2px solid #b3d9ff;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .info-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .info-step {
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1rem;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .info-card i {
+      font-size: 3rem;
+      color: #667eea;
+      margin: 1rem 0 1.5rem 0;
+    }
+
+    .info-card h4 {
+      color: #2d3748;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
+
+    .info-card p {
+      color: #4a5568;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    /* Responsive design */
+    @media (max-width: 1024px) {
+      .selection-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .page-title {
+        font-size: 2rem;
+      }
+
+      .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+
+      .header-content {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .selection-controls {
+        width: 100%;
+        align-items: stretch;
+      }
+
+      .select-all-controls {
+        justify-content: stretch;
+      }
+
+      .btn-select-all, .btn-clear-all {
+        flex: 1;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .matcher-container {
+        padding: 0.5rem;
+      }
+
+      .page-title {
+        font-size: 1.8rem;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .main-card {
+        border-radius: 15px;
+      }
+
+      .card-header {
+        padding: 1rem 1.5rem;
+      }
+
+      .job-item, .resume-item {
+        padding: 1rem 1.5rem;
+      }
+
+      .btn {
+        min-width: auto;
+        width: 100%;
+      }
+
+      .score-breakdown {
+        grid-template-columns: 1fr;
+      }
+
+      .result-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+      }
+
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .selection-controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .select-all-controls {
+        order: -1;
+        margin-bottom: 0.5rem;
+      }
+
+      .filter-controls {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+      }
+
+      .filter-group {
+        justify-content: space-between;
+      }
+
+      .results-header-main {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .page-title {
+        font-size: 1.5rem;
+      }
+
+      .card-content {
+        max-height: 400px;
+      }
+
+      .info-card {
+        padding: 1.5rem 1rem;
+      }
+
+      .info-card i {
+        font-size: 2.5rem;
+      }
+
+      .btn-select-all, .btn-clear-all {
+        font-size: 0.7rem;
+        padding: 0.4rem 0.8rem;
+        min-width: 80px;
+      }
+
+      .filter-controls {
+        gap: 0.75rem;
+      }
+
+      .filter-group {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+      }
+
+      .number-input-wrapper {
+        justify-content: center;
+      }
+
+      .results-input {
+        width: 100px;
+      }
+
+      .score-slider {
+        width: 100%;
+      }
+
+      .btn-export, .btn-reset {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+
+    /* Focus states for accessibility */
+    .btn:focus,
+    .job-item:focus,
+    .resume-item:focus,
+    .btn-select-all:focus,
+    .btn-clear-all:focus {
+      outline: 2px solid #667eea;
+      outline-offset: 2px;
+    }
+
+    /* Smooth transitions */
+    * {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Custom scrollbar for better UX */
+    .card-content {
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e0 #f7fafc;
+    }
+
+    .card-content::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .card-content::-webkit-scrollbar-track {
+      background: #f7fafc;
+      border-radius: 4px;
+    }
+
+    .card-content::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%);
+      border-radius: 4px;
+    }
+
+    .card-content::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
+    }
+  </style>
+  
+  <script>
+    // State management
+    let jobs = [];
+    let resumes = [];
+    let selectedJobId = null;
+    let selectedResumeIds = new Set();
+
+    // CSRF Token helper
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    // Initialize the application
+    function init() {
+      console.log('Initializing matching interface...');
+      
+      // Add entrance animation
+      const mainCards = document.querySelectorAll('.main-card');
+      mainCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+        
+        setTimeout(() => {
+          card.style.opacity = '1';
+          card.style.transform = 'translateY(0)';
+        }, 100 + (index * 200));
+      });
+      
+      loadJobs();
+      loadResumes();
+    }
+
+    // Load jobs data from API
+    async function loadJobs() {
+      console.log('Loading jobs...');
+      try {
+        const response = await fetch('/api/jobs/');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Jobs API response:', data);
+        
+        if (data.success) {
+          jobs = data.jobs || [];
+          renderJobs();
+          updateJobsCount();
+          console.log(`Loaded ${jobs.length} jobs`);
+        } else {
+          throw new Error(data.error || 'Failed to load jobs');
+        }
+      } catch (error) {
+        console.error('Error loading jobs:', error);
+        showJobsError(error.message);
+      }
+    }
+
+    // Load resumes data from API
+    async function loadResumes() {
+      console.log('Loading resumes...');
+      try {
+        const response = await fetch('/api/resumes/');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Resumes API response:', data);
+        
+        if (data.success) {
+          resumes = data.resumes || [];
+          renderResumes();
+          updateResumesCount();
+          updateSelectAllButtons();
+          console.log(`Loaded ${resumes.length} resumes`);
+        } else {
+          throw new Error(data.error || 'Failed to load resumes');
+        }
+      } catch (error) {
+        console.error('Error loading resumes:', error);
+        showResumesError(error.message);
+      }
+    }
+
+    // Render jobs
+    function renderJobs() {
+      const container = document.getElementById('jobs-container');
+      
+      if (!jobs || jobs.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">
+              <i class="fas fa-briefcase"></i>
+            </div>
+            <h3>No Jobs Available</h3>
+            <p>Create your first job offer to get started with intelligent matching</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = jobs.map(job => `
+        <div class="job-item ${selectedJobId === job.id ? 'selected' : ''}" 
+             onclick="selectJob('${job.id}')">
+          <div class="checkbox-wrapper">
+            <div class="radio ${selectedJobId === job.id ? 'checked' : ''}">
+              ${selectedJobId === job.id ? '●' : ''}
+            </div>
+            <div style="flex: 1;">
+              <div class="item-title">${escapeHtml(job.title || 'Untitled Position')}</div>
+              <div class="item-meta">
+                <i class="fas fa-building"></i> ${escapeHtml(job.company || 'Unknown Company')}
+                <i class="fas fa-map-marker-alt"></i> ${escapeHtml(job.location || 'Location not specified')}
+                <i class="fas fa-clock"></i> ${escapeHtml(job.type || 'Type not specified')}
+                <i class="fas fa-calendar"></i> ${escapeHtml(job.posted || 'Date not available')}
+              </div>
+              <div class="item-description">${escapeHtml(job.description || 'No description available')}</div>
+              <div class="skills-tags">
+                ${(job.skills || []).slice(0, 8).map(skill => `<span class="skill-tag">${escapeHtml(skill)}</span>`).join('')}
+                ${(job.skills || []).length > 8 ? `<span class="skill-tag">+${(job.skills || []).length - 8} more</span>` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Render resumes
+    function renderResumes() {
+      const container = document.getElementById('resumes-container');
+      
+      if (!resumes || resumes.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">
+              <i class="fas fa-file-alt"></i>
+            </div>
+            <h3>No Resumes Available</h3>
+            <p>Upload candidate resumes to start finding the perfect matches</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = resumes.map(resume => `
+        <div class="resume-item ${selectedResumeIds.has(resume.id) ? 'selected' : ''}" 
+             onclick="toggleResume('${resume.id}')">
+          <div class="checkbox-wrapper">
+            <div class="checkbox ${selectedResumeIds.has(resume.id) ? 'checked' : ''}">
+              ${selectedResumeIds.has(resume.id) ? '✓' : ''}
+            </div>
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                <div class="item-title">${escapeHtml(resume.name || 'Unknown Candidate')}</div>
+                ${resume.matchScore ? `<div class="match-score">${resume.matchScore}% match</div>` : ''}
+              </div>
+              <div class="item-meta">
+                <i class="fas fa-user-tie"></i> ${escapeHtml(resume.title || 'Title not specified')}
+                <i class="fas fa-briefcase"></i> ${escapeHtml(resume.experience || 'Experience not specified')}
+                <i class="fas fa-map-marker-alt"></i> ${escapeHtml(resume.location || 'Location not specified')}
+              </div>
+              <div class="item-description">${escapeHtml(resume.summary || 'No summary available')}</div>
+              <div class="skills-tags">
+                ${(resume.skills || []).slice(0, 6).map(skill => `<span class="skill-tag">${escapeHtml(skill)}</span>`).join('')}
+                ${(resume.skills || []).length > 6 ? `<span class="skill-tag">+${(resume.skills || []).length - 6} more</span>` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Utility function to escape HTML
+    function escapeHtml(unsafe) {
+      if (!unsafe) return '';
+      return unsafe.toString()
+           .replace(/&/g, "&amp;")
+           .replace(/</g, "&lt;")
+           .replace(/>/g, "&gt;")
+           .replace(/"/g, "&quot;")
+           .replace(/'/g, "&#039;");
+    }
+
+    // Select job (single selection)
+    function selectJob(jobId) {
+      console.log('Selecting job:', jobId);
+      selectedJobId = selectedJobId === jobId ? null : jobId;
+      renderJobs();
+      updateMatchButton();
+      
+      if (selectedJobId) {
+        const selectedJob = jobs.find(j => j.id === selectedJobId);
+        console.log('Selected job:', selectedJob);
+        
+        // Add selection feedback
+        const jobItems = document.querySelectorAll('.job-item');
+        jobItems.forEach(item => {
+          if (item.classList.contains('selected')) {
+            item.style.animation = 'pulse 0.6s ease-in-out';
+            setTimeout(() => {
+              item.style.animation = '';
+            }, 600);
+          }
+        });
+      }
+    }
+
+    // Toggle resume selection (multiple selection)
+    function toggleResume(resumeId) {
+      console.log('Toggling resume:', resumeId);
+      if (selectedResumeIds.has(resumeId)) {
+        selectedResumeIds.delete(resumeId);
+      } else {
+        selectedResumeIds.add(resumeId);
+      }
+      
+      renderResumes();
+      updateSelectedCount();
+      updateMatchButton();
+      updateSelectAllButtons();
+      
+      console.log('Selected resumes:', Array.from(selectedResumeIds));
+      
+      // Add selection feedback
+      const resumeItems = document.querySelectorAll('.resume-item');
+      resumeItems.forEach(item => {
+        if (item.classList.contains('selected')) {
+          item.style.animation = 'pulse 0.6s ease-in-out';
+          setTimeout(() => {
+            item.style.animation = '';
+          }, 600);
+        }
+      });
+    }
+
+    // Simple notification function
+    function showTemporaryMessage(message, type = 'info') {
+      // Remove existing message if any
+      const existingMessage = document.querySelector('.temp-message');
+      if (existingMessage) {
+        existingMessage.remove();
+      }
+      
+      // Create message element
+      const messageEl = document.createElement('div');
+      messageEl.className = `temp-message temp-message-${type}`;
+      
+      let icon = 'info-circle';
+      let background = 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
+      
+      switch(type) {
+        case 'success':
+          icon = 'check-circle';
+          background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+          break;
+        case 'warning':
+          icon = 'exclamation-triangle';
+          background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+          break;
+        case 'error':
+          icon = 'times-circle';
+          background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+          break;
+      }
+      
+      messageEl.innerHTML = `
+        <i class="fas fa-${icon}"></i>
+        ${message}
+      `;
+      
+      // Style the message
+      Object.assign(messageEl.style, {
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        background: background,
+        color: 'white',
+        padding: '1rem 1.5rem',
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        zIndex: '9999',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        fontSize: '0.9rem',
+        fontWeight: '600',
+        animation: 'slideInFromRight 0.3s ease-out',
+        maxWidth: '300px'
+      });
+      
+      // Add animation styles
+      if (!document.querySelector('#notification-styles')) {
+        const style = document.createElement('style');
+        style.id = 'notification-styles';
+        style.textContent = `
+          @keyframes slideInFromRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+          }
+          @keyframes slideOutToRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
+      // Add to page
+      document.body.appendChild(messageEl);
+      
+      // Auto remove after 3 seconds
+      setTimeout(() => {
+        messageEl.style.animation = 'slideOutToRight 0.3s ease-in';
+        setTimeout(() => {
+          if (messageEl.parentNode) {
+            messageEl.remove();
+          }
+        }, 300);
+      }, 3000);
+    }
+
+    // Select all resumes
+    function selectAllResumes() {
+      console.log('Selecting all resumes...');
+      
+      if (resumes.length === 0) {
+        return;
+      }
+      
+      // Add all resume IDs to selection
+      resumes.forEach(resume => {
+        selectedResumeIds.add(resume.id);
+      });
+      
+      renderResumes();
+      updateSelectedCount();
+      updateMatchButton();
+      updateSelectAllButtons();
+      
+      console.log('All resumes selected:', Array.from(selectedResumeIds));
+      
+      // Show success message
+      showTemporaryMessage(`All ${resumes.length} resumes selected!`, 'success');
+      
+      // Add visual feedback
+      const resumeItems = document.querySelectorAll('.resume-item');
+      resumeItems.forEach((item, index) => {
+        setTimeout(() => {
+          item.style.animation = 'pulse 0.4s ease-in-out';
+          setTimeout(() => {
+            item.style.animation = '';
+          }, 400);
+        }, index * 50);
+      });
+    }
+
+    // Clear all resume selections
+    function clearAllResumes() {
+      console.log('Clearing all resume selections...');
+      
+      if (selectedResumeIds.size === 0) {
+        return;
+      }
+      
+      const clearedCount = selectedResumeIds.size;
+      selectedResumeIds.clear();
+      
+      renderResumes();
+      updateSelectedCount();
+      updateMatchButton();
+      updateSelectAllButtons();
+      
+      console.log('All resume selections cleared');
+      
+      // Show info message
+      showTemporaryMessage(`Cleared ${clearedCount} selections`, 'info');
+    }
+
+    // Update counters
+    function updateJobsCount() {
+      document.getElementById('jobs-count').textContent = jobs.length;
+    }
+
+    function updateResumesCount() {
+      document.getElementById('resumes-count').textContent = resumes.length;
+    }
+
+    function updateSelectedCount() {
+      document.getElementById('selected-count').textContent = selectedResumeIds.size;
+    }
+
+    // Update select all buttons state
+    function updateSelectAllButtons() {
+      const selectAllBtn = document.getElementById('select-all-btn');
+      const clearAllBtn = document.getElementById('clear-all-btn');
+      
+      if (selectAllBtn && clearAllBtn) {
+        const hasResumes = resumes.length > 0;
+        const allSelected = hasResumes && selectedResumeIds.size === resumes.length;
+        const someSelected = selectedResumeIds.size > 0;
+        
+        // Update Select All button
+        selectAllBtn.disabled = !hasResumes || allSelected;
+        if (allSelected) {
+          selectAllBtn.innerHTML = `
+            <i class="fas fa-check"></i>
+            All Selected
+          `;
+        } else {
+          selectAllBtn.innerHTML = `
+            <i class="fas fa-check-double"></i>
+            Select All (${resumes.length})
+          `;
+        }
+        
+        // Update Clear All button
+        clearAllBtn.disabled = !someSelected;
+        if (someSelected) {
+          clearAllBtn.innerHTML = `
+            <i class="fas fa-times"></i>
+            Clear (${selectedResumeIds.size})
+          `;
+        } else {
+          clearAllBtn.innerHTML = `
+            <i class="fas fa-times"></i>
+            Clear All
+          `;
+        }
+      }
+    }
+
+    // Update match button state
+    function updateMatchButton() {
+      const matchBtn = document.getElementById('match-btn');
+      if (matchBtn) {
+        const canMatch = selectedJobId && selectedResumeIds.size > 0;
+        matchBtn.disabled = !canMatch;
+        
+        if (canMatch) {
+          matchBtn.innerHTML = `
+            <i class="fas fa-brain"></i>
+            Analyze ${selectedResumeIds.size} Candidate${selectedResumeIds.size > 1 ? 's' : ''}
+          `;
+          matchBtn.classList.remove('btn-disabled');
+        } else if (!selectedJobId && selectedResumeIds.size === 0) {
+          matchBtn.innerHTML = `
+            <i class="fas fa-search"></i>
+            Select Job & Resumes to Match
+          `;
+          matchBtn.classList.add('btn-disabled');
+        } else if (!selectedJobId) {
+          matchBtn.innerHTML = `
+            <i class="fas fa-briefcase"></i>
+            Select a Job Offer
+          `;
+          matchBtn.classList.add('btn-disabled');
+        } else {
+          matchBtn.innerHTML = `
+            <i class="fas fa-file-alt"></i>
+            Select at least one Resume
+          `;
+          matchBtn.classList.add('btn-disabled');
+        }
+      }
+    }
+
+    // Perform matching analysis
+    async function performMatching() {
+      const matchBtn = document.getElementById('match-btn');
+      const resultsContainer = document.getElementById('matching-results');
+      
+      if (!selectedJobId || selectedResumeIds.size === 0) {
+        alert('Please select a job offer and at least one resume');
+        return;
+      }
+
+      console.log('Starting matching process...');
+      console.log('Job ID:', selectedJobId);
+      console.log('Resume IDs:', Array.from(selectedResumeIds));
+
+      // Show loading state
+      matchBtn.disabled = true;
+      matchBtn.innerHTML = `
+        <div class="spinner" style="width: 16px; height: 16px; margin-right: 0.5rem;"></div>
+        Analyzing...
+      `;
+      
+      resultsContainer.innerHTML = `
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Running intelligent matching analysis...</p>
+          <p style="font-size: 0.9rem; color: #718096; margin-top: 1rem;">
+            Comparing skills, experience, and requirements
+          </p>
+        </div>
+      `;
+
+      try {
+        const response = await fetch('/api/match-resumes/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({
+            job_id: selectedJobId,
+            resume_ids: Array.from(selectedResumeIds)
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('Matching API response:', data);
+
+        // Add debugging for grammar penalty
+        console.log('Grammar penalties for all candidates:');
+        if (data.results) {
+          data.results.forEach(result => {
+            console.log(`${result.name}: ${result.grammar_penalty}`);
+          });
+
+          // Check if all penalties are the same
+          const penalties = data.results.map(r => r.grammar_penalty);
+          const uniquePenalties = [...new Set(penalties)];
+          if (uniquePenalties.length === 1) {
+            console.warn('⚠️ All candidates have the same grammar penalty:', uniquePenalties[0]);
+          }
+        }
+
+        if (data.success) {
+          displayMatchingResults(data.results);
+        } else {
+          throw new Error(data.error || 'Matching failed');
+        }
+
+      } catch (error) {
+        console.error('Matching error:', error);
+        resultsContainer.innerHTML = `
+          <div class="error-state">
+            <h3><i class="fas fa-exclamation-triangle"></i> Matching Error</h3>
+            <p>${error.message}</p>
+            <p style="font-size: 0.9rem; margin-top: 1rem;">
+              Please check your connection and try again
+            </p>
+            <button class="retry-button" onclick="performMatching()">
+              <i class="fas fa-redo"></i> Retry Analysis
+            </button>
+          </div>
+        `;
+      } finally {
+        matchBtn.disabled = false;
+        updateMatchButton();
+      }
+    }
+
+    // Store original results for filtering
+    let originalResults = [];
+    let filteredResults = [];
+
+    // Display matching results
+    function displayMatchingResults(results) {
+      const resultsContainer = document.getElementById('matching-results');
+      
+      if (!results || results.length === 0) {
+        resultsContainer.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">
+              <i class="fas fa-search"></i>
+            </div>
+            <h3>No Results Found</h3>
+            <p>No matching results found for the selected criteria</p>
+          </div>
+        `;
+        return;
+      }
+
+      // Store original results and sort by score (highest first)
+      originalResults = [...results].sort((a, b) => (b.final_score || 0) - (a.final_score || 0));
+      filteredResults = [...originalResults];
+
+      renderResults();
+    }
+
+    // Render results with current filters
+    function renderResults() {
+      const resultsContainer = document.getElementById('matching-results');
+      
+      if (!filteredResults || filteredResults.length === 0) {
+        resultsContainer.innerHTML = `
+          <div class="results-header">
+            <h3>
+              <i class="fas fa-chart-line"></i>
+              Matching Analysis Results
+            </h3>
+            <div class="results-controls">
+              <div class="filter-controls">
+                <div class="filter-group">
+                  <label for="score-threshold">
+                    <i class="fas fa-filter"></i>
+                    Min Score:
+                  </label>
+                  <input type="range" id="score-threshold" min="0" max="100" value="0" 
+                         oninput="updateFilters()" class="score-slider">
+                  <span id="score-value">0%</span>
+                </div>
+                <div class="filter-group">
+                  <label for="max-results">
+                    <i class="fas fa-list"></i>
+                    Show:
+                  </label>
+                  <div class="number-input-wrapper">
+                    <input type="number" id="max-results" min="1" max="999" value="999" 
+                           oninput="updateFilters()" class="results-input" placeholder="All">
+                    <span class="input-suffix">results</span>
+                  </div>
+                </div>
+                <button onclick="exportToExcel()" class="btn-export" title="Export filtered results to Excel">
+                  <i class="fas fa-file-excel"></i>
+                  Export Excel
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="no-results-message">
+            <div class="empty-icon">
+              <i class="fas fa-filter"></i>
+            </div>
+            <h3>No Results Match Current Filters</h3>
+            <p>Try adjusting the score threshold or increasing the number of results shown</p>
+            <button onclick="resetFilters()" class="btn-reset">
+              <i class="fas fa-undo"></i>
+              Reset Filters
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      resultsContainer.innerHTML = `
+        <div class="results-header">
+          <div class="results-header-main">
+            <h3>
+              <i class="fas fa-chart-line"></i>
+              Matching Analysis Results
+            </h3>
+            <div class="results-summary">
+              Showing ${filteredResults.length} of ${originalResults.length} candidate${originalResults.length > 1 ? 's' : ''}
+            </div>
+          </div>
+          <div class="results-controls">
+            <div class="filter-controls">
+              <div class="filter-group">
+                <label for="score-threshold">
+                  <i class="fas fa-filter"></i>
+                  Min Score:
+                </label>
+                <input type="range" id="score-threshold" min="0" max="100" value="${getCurrentScoreThreshold()}" 
+                       oninput="updateFilters()" class="score-slider">
+                <span id="score-value">${getCurrentScoreThreshold()}%</span>
+              </div>
+              <div class="filter-group">
+                <label for="max-results">
+                  <i class="fas fa-list"></i>
+                  Show:
+                </label>
+                <div class="number-input-wrapper">
+                  <input type="number" id="max-results" min="1" max="999" value="${getCurrentMaxResults()}" 
+                         oninput="updateFilters()" class="results-input" placeholder="All">
+                  <span class="input-suffix">results</span>
+                </div>
+              </div>
+              <button onclick="exportToExcel()" class="btn-export" title="Export filtered results to Excel">
+                <i class="fas fa-file-excel"></i>
+                Export Excel
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="results-list">
+          ${filteredResults.map((result, index) => `
+            <div class="result-item" style="animation: slideInUp 0.5s ease-out ${index * 0.1}s both;">
+              <div class="result-header">
+                <div class="candidate-info">
+                  <h4>${escapeHtml(result.name || 'Unknown Candidate')}</h4>
+                  <p class="candidate-title">${escapeHtml(result.title || 'Title not specified')}</p>
+                </div>
+                <div class="score-badge ${getScoreClass(result.final_score || 0)}">
+                  <i class="fas fa-trophy"></i>
+                  ${Math.round((result.final_score || 0) * 100)}%
+                </div>
+              </div>
+              <div class="result-details">
+                <div class="score-breakdown">
+                  <div class="score-item">
+                    <span class="score-label">
+                      <i class="fas fa-search"></i>
+                      Similarity Score
+                    </span>
+                    <span class="score-value">${Math.round((result.similarity_score || 0) * 100)}%</span>
+                  </div>
+                  <div class="score-item">
+                    <span class="score-label">
+                      <i class="fas fa-spell-check"></i>
+                      Grammar Penalty
+                    </span>
+                    <span class="score-value">-${Math.round((result.grammar_penalty || 0) * 100)}%</span>
+                  </div>
+                  <div class="score-item">
+                    <span class="score-label">
+                      <i class="fas fa-star"></i>
+                      Final Score
+                    </span>
+                    <span class="score-value final">${Math.round((result.final_score || 0) * 100)}%</span>
+                  </div>
+                </div>
+                ${(result.matched_skills && result.matched_skills.length > 0) ? `
+                  <div class="matched-skills">
+                    <h5>
+                      <i class="fas fa-check-circle"></i>
+                      Matched Skills (${result.matched_skills.length})
+                    </h5>
+                    <div class="skills-match">
+                      ${result.matched_skills.map(skill => 
+                        `<span class="skill-match">
+                          <i class="fas fa-check"></i>
+                          ${escapeHtml(skill)}
+                        </span>`
+                      ).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+                ${result.summary ? `
+                  <div class="candidate-summary">
+                    <h5>
+                      <i class="fas fa-user"></i>
+                      Candidate Summary
+                    </h5>
+                    <p>${escapeHtml(result.summary)}</p>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      // Add animation styles
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes slideInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes pulse {
+          0%, 100% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.05);
+          }
+        }
+      `;
+      document.head.appendChild(style);
+
+      console.log('Matching results displayed successfully');
+      
+      // Scroll to results with smooth animation
+      setTimeout(() => {
+        resultsContainer.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      }, 100);
+    }
+
+    // Update filters and re-render results
+    function updateFilters() {
+      const scoreThreshold = parseInt(document.getElementById('score-threshold').value) / 100;
+      const maxResultsInput = document.getElementById('max-results');
+      const maxResults = parseInt(maxResultsInput.value) || 999;
+      
+      // Validate input
+      if (maxResults < 1) {
+        maxResultsInput.value = 1;
+        return;
+      }
+      if (maxResults > 999) {
+        maxResultsInput.value = 999;
+        return;
+      }
+      
+      // Update score display
+      document.getElementById('score-value').textContent = `${Math.round(scoreThreshold * 100)}%`;
+      
+      // Filter by score threshold
+      filteredResults = originalResults.filter(result => 
+        (result.final_score || 0) >= scoreThreshold
+      );
+      
+      // Limit number of results
+      if (maxResults < filteredResults.length) {
+        filteredResults = filteredResults.slice(0, maxResults);
+      }
+      
+      console.log(`Filtered results: ${filteredResults.length} of ${originalResults.length} candidates (min score: ${Math.round(scoreThreshold * 100)}%, max: ${maxResults})`);
+      
+      renderResults();
+    }
+
+    // Reset filters to default values
+    function resetFilters() {
+      document.getElementById('score-threshold').value = '0';
+      document.getElementById('max-results').value = '999';
+      updateFilters();
+    }
+
+    // Get current filter values (for maintaining state during re-renders)
+    function getCurrentScoreThreshold() {
+      const element = document.getElementById('score-threshold');
+      return element ? element.value : '0';
+    }
+
+    function getCurrentMaxResults() {
+      const element = document.getElementById('max-results');
+      return element ? element.value : '999';
+    }
+
+    // Export filtered results to Excel
+    function exportToExcel() {
+      if (!filteredResults || filteredResults.length === 0) {
+        showTemporaryMessage('No results to export!', 'warning');
+        return;
+      }
+
+      try {
+        // Import SheetJS library dynamically if not loaded
+        if (typeof XLSX === 'undefined') {
+          showTemporaryMessage('Loading Excel library...', 'info');
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+          script.onload = () => {
+            showTemporaryMessage('Excel library loaded!', 'success');
+            exportToExcel(); // Retry after loading
+          };
+          script.onerror = () => {
+            showTemporaryMessage('Failed to load Excel library', 'error');
+          };
+          document.head.appendChild(script);
+          return;
+        }
+
+        // Get the selected job information
+        const selectedJob = jobs.find(j => j.id === selectedJobId);
+        const jobTitle = selectedJob ? selectedJob.title : 'Unknown Job';
+        const jobCompany = selectedJob ? selectedJob.company : 'Unknown Company';
+        const jobSkills = selectedJob ? (selectedJob.skills || []) : [];
+        const jobDescription = selectedJob ? selectedJob.description : 'No description available';
+        
+        // Get export metadata
+        const exportDate = new Date().toLocaleString();
+        const scoreThreshold = Math.round(parseInt(document.getElementById('score-threshold').value));
+        const maxResults = document.getElementById('max-results').value;
+
+        // Create workbook
+        const wb = XLSX.utils.book_new();
+
+        // === SHEET 1: EXECUTIVE SUMMARY ===
+        const summaryData = [
+          ['RESUME MATCHING ANALYSIS REPORT'],
+          [''],
+          ['Report Details'],
+          ['Generated on:', exportDate],
+          ['Job Position:', jobTitle],
+          ['Company:', jobCompany],
+          [''],
+          ['Analysis Summary'],
+          ['Total Candidates Analyzed:', originalResults.length],
+          ['Candidates Exported:', filteredResults.length],
+          ['Score Threshold Applied:', `${scoreThreshold}%`],
+          ['Max Results Shown:', maxResults],
+          [''],
+          ['Job Requirements'],
+          ['Required Skills:', jobSkills.join(', ')],
+          ['Job Description:', jobDescription.substring(0, 200) + '...'],
+          [''],
+          ['Top Performers'],
+          ...filteredResults.slice(0, 3).map((result, index) => [
+            `${index + 1}. ${result.name}`,
+            `${Math.round((result.final_score || 0) * 100)}%`,
+            `${(result.matched_skills || []).length} matched skills`
+          ])
+        ];
+
+        const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+        
+        // Style the summary sheet
+        summaryWs['!cols'] = [{ width: 25 }, { width: 40 }, { width: 20 }];
+        
+        XLSX.utils.book_append_sheet(wb, summaryWs, 'Executive Summary');
+
+        // === SHEET 2: DETAILED ANALYSIS ===
+        const detailedHeaders = [
+          'Rank', 'Candidate Name', 'Current Title', 'Experience Level', 'Location',
+          'Final Score (%)', 'Similarity Score (%)', 'Grammar Penalty (%)',
+          'Skills Match Rate (%)', 'Total Skills', 'Matched Skills Count', 'Missing Skills Count',
+          'Match Quality', 'Recommendation'
+        ];
+
+        const detailedData = filteredResults.map((result, index) => {
+          const candidateSkills = result.matched_skills || [];
+          const totalCandidateSkills = result.skills ? result.skills.length : candidateSkills.length;
+          const missingSkills = jobSkills.filter(skill => 
+            !candidateSkills.some(candidateSkill => 
+              candidateSkill.toLowerCase().includes(skill.toLowerCase()) ||
+              skill.toLowerCase().includes(candidateSkill.toLowerCase())
+            )
+          );
+          
+          const skillsMatchRate = jobSkills.length > 0 ? 
+            Math.round((candidateSkills.length / jobSkills.length) * 100) : 0;
+          
+          const finalScore = Math.round((result.final_score || 0) * 100);
+          let matchQuality = 'Poor';
+          let recommendation = 'Not recommended';
+          
+          if (finalScore >= 80) {
+            matchQuality = 'Excellent';
+            recommendation = 'Highly recommended - Strong match';
+          } else if (finalScore >= 65) {
+            matchQuality = 'Good';
+            recommendation = 'Recommended - Good potential';
+          } else if (finalScore >= 50) {
+            matchQuality = 'Fair';
+            recommendation = 'Consider with reservations';
+          } else if (finalScore >= 30) {
+            matchQuality = 'Poor';
+            recommendation = 'Not recommended - Weak match';
+          } else {
+            matchQuality = 'Very Poor';
+            recommendation = 'Not recommended - Poor match';
+          }
+
+          return [
+            index + 1,
+            result.name || 'Unknown Candidate',
+            result.title || 'Not specified',
+            result.experience || 'Not specified',
+            result.location || 'Not specified',
+            finalScore,
+            Math.round((result.similarity_score || 0) * 100),
+            Math.round((result.grammar_penalty || 0) * 100),
+            skillsMatchRate,
+            totalCandidateSkills,
+            candidateSkills.length,
+            missingSkills.length,
+            matchQuality,
+            recommendation
+          ];
+        });
+
+        const detailedWs = XLSX.utils.aoa_to_sheet([detailedHeaders, ...detailedData]);
+        
+        // Auto-size columns for detailed analysis
+        detailedWs['!cols'] = [
+          { width: 6 },   // Rank
+          { width: 20 },  // Name
+          { width: 25 },  // Title
+          { width: 15 },  // Experience
+          { width: 15 },  // Location
+          { width: 12 },  // Final Score
+          { width: 15 },  // Similarity
+          { width: 15 },  // Grammar
+          { width: 15 },  // Skills Match
+          { width: 12 },  // Total Skills
+          { width: 15 },  // Matched
+          { width: 15 },  // Missing
+          { width: 12 },  // Quality
+          { width: 35 }   // Recommendation
+        ];
+
+        XLSX.utils.book_append_sheet(wb, detailedWs, 'Detailed Analysis');
+
+        // === SHEET 3: SKILLS BREAKDOWN ===
+        const skillsHeaders = ['Candidate Name', 'Matched Skills', 'Missing Skills', 'Unique Skills', 'Summary'];
+        
+        const skillsData = filteredResults.map(result => {
+          const candidateSkills = result.matched_skills || [];
+          const missingSkills = jobSkills.filter(skill => 
+            !candidateSkills.some(candidateSkill => 
+              candidateSkill.toLowerCase().includes(skill.toLowerCase()) ||
+              skill.toLowerCase().includes(candidateSkill.toLowerCase())
+            )
+          );
+          const uniqueSkills = candidateSkills.filter(skill =>
+            !jobSkills.some(jobSkill =>
+              skill.toLowerCase().includes(jobSkill.toLowerCase()) ||
+              jobSkill.toLowerCase().includes(skill.toLowerCase())
+            )
+          );
+
+          return [
+            result.name || 'Unknown Candidate',
+            candidateSkills.join(', '),
+            missingSkills.join(', '),
+            uniqueSkills.join(', '),
+            (result.summary || 'No summary available').substring(0, 100) + '...'
+          ];
+        });
+
+        const skillsWs = XLSX.utils.aoa_to_sheet([skillsHeaders, ...skillsData]);
+        
+        // Auto-size columns for skills breakdown
+        skillsWs['!cols'] = [
+          { width: 20 },  // Name
+          { width: 40 },  // Matched Skills
+          { width: 30 },  // Missing Skills
+          { width: 30 },  // Unique Skills
+          { width: 50 }   // Summary
+        ];
+
+        XLSX.utils.book_append_sheet(wb, skillsWs, 'Skills Breakdown');
+
+        // === SHEET 4: STATISTICS ===
+        const stats = {
+          excellent: filteredResults.filter(r => (r.final_score || 0) >= 0.8).length,
+          good: filteredResults.filter(r => (r.final_score || 0) >= 0.65 && (r.final_score || 0) < 0.8).length,
+          fair: filteredResults.filter(r => (r.final_score || 0) >= 0.5 && (r.final_score || 0) < 0.65).length,
+          poor: filteredResults.filter(r => (r.final_score || 0) < 0.5).length
+        };
+
+        const avgScore = filteredResults.reduce((sum, r) => sum + (r.final_score || 0), 0) / filteredResults.length;
+        const avgSkillsMatched = filteredResults.reduce((sum, r) => sum + (r.matched_skills || []).length, 0) / filteredResults.length;
+
+        const statsData = [
+          ['MATCHING STATISTICS'],
+          [''],
+          ['Score Distribution'],
+          ['Excellent (80%+):', stats.excellent],
+          ['Good (65-79%):', stats.good],
+          ['Fair (50-64%):', stats.fair],
+          ['Poor (<50%):', stats.poor],
+          [''],
+          ['Average Metrics'],
+          ['Average Final Score:', `${Math.round(avgScore * 100)}%`],
+          ['Average Skills Matched:', Math.round(avgSkillsMatched)],
+          [''],
+          ['Recommendations'],
+          ['Candidates to Interview:', stats.excellent + stats.good],
+          ['Candidates to Consider:', stats.fair],
+          ['Candidates to Reject:', stats.poor],
+          [''],
+          ['Top Skills Found'],
+          ...getTopSkills(filteredResults).slice(0, 5).map(([skill, count]) => [skill, `${count} candidates`])
+        ];
+
+        const statsWs = XLSX.utils.aoa_to_sheet(statsData);
+        statsWs['!cols'] = [{ width: 25 }, { width: 20 }];
+        
+        XLSX.utils.book_append_sheet(wb, statsWs, 'Statistics');
+
+        // Generate enhanced filename
+        const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+        const cleanJobTitle = jobTitle.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+        const filename = `Resume_Analysis_${cleanJobTitle}_${timestamp}.xlsx`;
+
+        // Export the workbook
+        XLSX.writeFile(wb, filename);
+        
+        // Show success message
+        showTemporaryMessage(`Excel exported: ${filteredResults.length} candidates`, 'success');
+        
+        console.log(`Enhanced Excel report exported: ${filename}`);
+        console.log('Report includes:');
+        console.log('- Executive Summary');
+        console.log('- Detailed Analysis');
+        console.log('- Skills Breakdown');
+        console.log('- Statistics & Recommendations');
+        console.log(`- ${filteredResults.length} candidates analyzed`);
+        
+      } catch (error) {
+        console.error('Error exporting Excel:', error);
+        showTemporaryMessage('Failed to export Excel file', 'error');
+      }
+    }
+
+    // Helper function to get top skills across all candidates
+    function getTopSkills(results) {
+      const skillCounts = {};
+      results.forEach(result => {
+        (result.matched_skills || []).forEach(skill => {
+          skillCounts[skill] = (skillCounts[skill] || 0) + 1;
+        });
+      });
+      
+      return Object.entries(skillCounts)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 10);
+    }
+
+    // Get CSS class based on score
+    function getScoreClass(score) {
+      if (score >= 0.8) return 'excellent';
+      if (score >= 0.6) return 'good';
+      if (score >= 0.4) return 'fair';
+      return 'poor';
+    }
+
+    // Error handlers
+    function showJobsError(message) {
+      document.getElementById('jobs-container').innerHTML = `
+        <div class="error-state">
+          <h3><i class="fas fa-exclamation-triangle"></i> Error Loading Jobs</h3>
+          <p>${escapeHtml(message || 'Unknown error occurred')}</p>
+          <p style="font-size: 0.9rem; margin-top: 1rem;">
+            Please check your connection and try again
+          </p>
+          <button class="retry-button" onclick="loadJobs()">
+            <i class="fas fa-redo"></i> Retry
+          </button>
+        </div>
+      `;
+    }
+
+    function showResumesError(message) {
+      document.getElementById('resumes-container').innerHTML = `
+        <div class="error-state">
+          <h3><i class="fas fa-exclamation-triangle"></i> Error Loading Resumes</h3>
+          <p>${escapeHtml(message || 'Unknown error occurred')}</p>
+          <p style="font-size: 0.9rem; margin-top: 1rem;">
+            Please check your connection and try again
+          </p>
+          <button class="retry-button" onclick="loadResumes()">
+            <i class="fas fa-redo"></i> Retry
+          </button>
+        </div>
+      `;
+    }
+
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOM loaded, initializing...');
+      init();
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      // Ctrl+Enter to run matching
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        if (!document.getElementById('match-btn').disabled) {
+          performMatching();
+        }
+      }
+      
+      // Ctrl+A to select all resumes
+      if (e.ctrlKey && e.key === 'a' && e.target.tagName !== 'INPUT') {
+        e.preventDefault();
+        selectAllResumes();
+      }
+      
+      // Ctrl+D to clear all selections
+      if (e.ctrlKey && e.key === 'd') {
+        e.preventDefault();
+        clearAllResumes();
+      }
+      
+      // ESC to clear selections
+      if (e.key === 'Escape') {
+        if (confirm('Clear all selections?')) {
+          selectedJobId = null;
+          selectedResumeIds.clear();
+          renderJobs();
+          renderResumes();
+          updateSelectedCount();
+          updateMatchButton();
+          updateSelectAllButtons();
+        }
+      }
+    });
+
+    // Export functions for debugging
+    window.matchingInterface = {
+      getSelectedJob: () => selectedJobId ? jobs.find(j => j.id === selectedJobId) : null,
+      getSelectedResumes: () => resumes.filter(r => selectedResumeIds.has(r.id)),
+      clearSelections: () => {
+        selectedJobId = null;
+        selectedResumeIds.clear();
+        renderJobs();
+        renderResumes();
+        updateSelectedCount();
+        updateMatchButton();
+        updateSelectAllButtons();
+      },
+      selectAllResumes: selectAllResumes,
+      clearAllResumes: clearAllResumes,
+      performMatching: performMatching,
+      exportToExcel: exportToExcel,
+      updateFilters: updateFilters,
+      resetFilters: resetFilters,
+      showTemporaryMessage: showTemporaryMessage, // For testing notifications
+      // Debug helpers
+      state: {
+        jobs: () => jobs,
+        resumes: () => resumes,
+        selectedJobId: () => selectedJobId,
+        selectedResumeIds: () => Array.from(selectedResumeIds),
+        originalResults: () => originalResults,
+        filteredResults: () => filteredResults
+      }
+    };
+
+    // Add helpful console info
+    console.log('🎯 Resume Matcher Interface Loaded!');
+    console.log('📝 Keyboard shortcuts:');
+    console.log('  - Ctrl+Enter: Run matching analysis');
+    console.log('  - Ctrl+A: Select all resumes');
+    console.log('  - Ctrl+D: Clear all resume selections');
+    console.log('  - ESC: Clear all selections');
+    console.log('🔧 Debug commands available via window.matchingInterface');
+    console.log('📊 New features:');
+    console.log('  - Score threshold filtering');
+    console.log('  - Limit number of results shown');
+    console.log('  - Export filtered results to Excel with multiple sheets');
+    console.log('  - Notification system for user feedback');
+    console.log('💡 Test notifications: window.matchingInterface.showTemporaryMessage("Test", "success")');
+  </script>
 {% endblock %}

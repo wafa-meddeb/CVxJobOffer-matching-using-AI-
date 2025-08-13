@@ -1,36 +1,927 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <div class="card">
-    <h2>Add Job Offer</h2>
-    <textarea id="jobText" placeholder="Paste the complete job offer here..." rows="12"></textarea>
-    <button class="btn-primary" onclick="submitJobOffer()">Create Job Offer</button>
+  <!-- Enhanced container for better layout -->
+  <div class="job-create-container">
+    
+    <!-- Enhanced main card -->
+    <div class="main-card">
+      
+      <!-- Page header -->
+      <div class="page-header">
+        <h2 class="page-title">
+          <i class="fas fa-plus-circle"></i>
+          Create Job Offer
+        </h2>
+        <p class="page-subtitle">
+          Paste your job description and let AI extract the key information automatically
+        </p>
+      </div>
+
+      <!-- Job creation form -->
+      <div class="job-create-form">
+        
+        <!-- Input section -->
+        <div class="input-section">
+          <div class="textarea-container">
+            <label for="jobText" class="input-label">
+              <i class="fas fa-file-alt"></i>
+              Job Description
+            </label>
+            <div class="textarea-wrapper">
+              <textarea 
+                id="jobText" 
+                placeholder="Paste the complete job offer here...&#10;&#10;Include details like:&#10;• Job title and company&#10;• Required skills and experience&#10;• Job responsibilities&#10;• Location and salary (if available)&#10;• Any other relevant information" 
+                rows="15"></textarea>
+              <div class="textarea-info">
+                <span class="char-count" id="charCount">0 characters</span>
+                <span class="word-count" id="wordCount">0 words</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Action buttons -->
+          <div class="action-buttons">
+            <button class="btn btn-primary" id="submitBtn" onclick="submitJobOffer()">
+              <i class="fas fa-magic"></i>
+              Create Job Offer
+            </button>
+            <button class="btn btn-clear" onclick="clearForm()">
+              <i class="fas fa-eraser"></i>
+              Clear
+            </button>
+            <button class="btn btn-example" onclick="loadExample()">
+              <i class="fas fa-lightbulb"></i>
+              Load Example
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading state -->
+        <div id="loadingSection" class="loading-section" style="display: none;">
+          <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Analyzing job description...</p>
+            <small>This may take a few seconds</small>
+          </div>
+        </div>
+
+        <!-- Results section -->
+        <div id="resultsSection" class="results-section" style="display: none;">
+          <h3 class="results-title">
+            <i class="fas fa-check-circle"></i>
+            Extracted Job Information
+          </h3>
+          <div id="responseBox" class="response-content"></div>
+          <div class="results-actions">
+            <button class="btn btn-success" id="saveJobBtn" onclick="saveJob()" style="display: none;">
+              <i class="fas fa-save"></i>
+              Save Job Offer
+            </button>
+            <button class="btn btn-secondary" onclick="editJob()" style="display: none;">
+              <i class="fas fa-edit"></i>
+              Edit Details
+            </button>
+            <button class="btn btn-clear" onclick="resetForm()">
+              <i class="fas fa-redo"></i>
+              Try Again
+            </button>
+          </div>
+        </div>
+
+        <!-- Error section -->
+        <div id="errorSection" class="error-section" style="display: none;">
+          <div class="error-content">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>Something went wrong</h3>
+            <p id="errorMessage">An error occurred while processing your job description.</p>
+            <button class="btn btn-primary" onclick="resetForm()">
+              <i class="fas fa-redo"></i>
+              Try Again
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tips section -->
+      <div class="tips-section">
+        <h4 class="tips-title">
+          <i class="fas fa-info-circle"></i>
+          Tips for better results
+        </h4>
+        <div class="tips-grid">
+          <div class="tip-card">
+            <i class="fas fa-bullseye"></i>
+            <h5>Be Specific</h5>
+            <p>Include detailed requirements, skills, and responsibilities for more accurate extraction.</p>
+          </div>
+          <div class="tip-card">
+            <i class="fas fa-list-ul"></i>
+            <h5>Use Structure</h5>
+            <p>Organize information with clear sections (requirements, responsibilities, etc.).</p>
+          </div>
+          <div class="tip-card">
+            <i class="fas fa-spell-check"></i>
+            <h5>Check Quality</h5>
+            <p>Ensure the text is well-formatted and free from major typos or formatting issues.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
 
-  {% comment %} <div class="card empty-state">
-    <h2>No Jobs Available</h2>
-    <p>Create your first job offer to get started</p>
-  </div> {% endcomment %}
+  <style>
+    /* Base container styles */
+    .job-create-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
 
-  <pre id="responseBox" style="margin-top: 1rem;"></pre>
+    /* Enhanced main card */
+    .main-card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      padding: 2.5rem;
+      margin: 1rem 0;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* Page header */
+    .page-header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 3px solid #f1f5f9;
+    }
+
+    .page-title {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: #1a202c;
+      margin: 0 0 1rem 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+    }
+
+    .page-title i {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .page-subtitle {
+      color: #4a5568;
+      font-size: 1.1rem;
+      font-weight: 500;
+      margin: 0;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* Form styling */
+    .job-create-form {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+
+    /* Input section */
+    .input-section {
+      background: #fafbfc;
+      border-radius: 20px;
+      padding: 2rem;
+      border: 2px solid #e2e8f0;
+    }
+
+    .textarea-container {
+      margin-bottom: 2rem;
+    }
+
+    .input-label {
+      font-weight: 700;
+      color: #2d3748;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+
+    .input-label i {
+      color: #667eea;
+    }
+
+    .textarea-wrapper {
+      position: relative;
+    }
+
+    #jobText {
+      width: 100%;
+      min-height: 400px;
+      padding: 1.5rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 15px;
+      font-size: 1rem;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      resize: vertical;
+      transition: all 0.3s ease;
+      background: white;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    #jobText:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+      transform: translateY(-2px);
+    }
+
+    #jobText::placeholder {
+      color: #a0aec0;
+      font-style: italic;
+    }
+
+    .textarea-info {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      color: #718096;
+    }
+
+    /* Action buttons */
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 160px;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: 2px solid #667eea;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #5a67d8 0%, #667eea 100%);
+      border-color: #5a67d8;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      color: white;
+      border: 2px solid #28a745;
+    }
+
+    .btn-success:hover {
+      background: linear-gradient(135deg, #218838 0%, #28a745 100%);
+      border-color: #218838;
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+      color: white;
+      border: 2px solid #6c757d;
+    }
+
+    .btn-secondary:hover {
+      background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
+      border-color: #5a6268;
+    }
+
+    .btn-clear {
+      background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+      color: #4a5568;
+      border: 2px solid #e2e8f0;
+    }
+
+    .btn-clear:hover {
+      background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
+      color: #2d3748;
+    }
+
+    .btn-example {
+      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+      color: #856404;
+      border: 2px solid #f1c40f;
+    }
+
+    .btn-example:hover {
+      background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+      color: white;
+      border-color: #e67e22;
+    }
+
+    /* Loading section */
+    .loading-section {
+      text-align: center;
+      padding: 3rem;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      border-radius: 20px;
+      border: 2px solid #e2e8f0;
+    }
+
+    .loading-spinner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-spinner p {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #2d3748;
+      margin: 0;
+    }
+
+    .loading-spinner small {
+      color: #718096;
+      font-style: italic;
+    }
+
+    /* Results section */
+    .results-section {
+      background: #fafbfc;
+      border-radius: 20px;
+      padding: 2rem;
+      border: 2px solid #e2e8f0;
+    }
+
+    .results-title {
+      color: #2d3748;
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+
+    .results-title i {
+      color: #28a745;
+    }
+
+    .response-content {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 15px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      overflow-x: auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .results-actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    /* Error section */
+    .error-section {
+      background: linear-gradient(135deg, #fee 0%, #fdd 100%);
+      border-radius: 20px;
+      padding: 2rem;
+      border: 2px solid #f5c6cb;
+    }
+
+    .error-content {
+      text-align: center;
+    }
+
+    .error-content i {
+      font-size: 3rem;
+      color: #dc3545;
+      margin-bottom: 1rem;
+    }
+
+    .error-content h3 {
+      color: #721c24;
+      margin-bottom: 1rem;
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .error-content p {
+      color: #721c24;
+      margin-bottom: 2rem;
+      font-size: 1.1rem;
+    }
+
+    /* Tips section */
+    .tips-section {
+      background: linear-gradient(135deg, #e6f3ff 0%, #cce7ff 100%);
+      border-radius: 20px;
+      padding: 2rem;
+      border: 2px solid #b3d9ff;
+      margin-top: 2rem;
+    }
+
+    .tips-title {
+      color: #0066cc;
+      font-size: 1.3rem;
+      font-weight: 800;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+
+    .tips-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .tip-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 15px;
+      border: 2px solid #b3d9ff;
+      text-align: center;
+    }
+
+    .tip-card i {
+      font-size: 2rem;
+      color: #667eea;
+      margin-bottom: 1rem;
+    }
+
+    .tip-card h5 {
+      color: #2d3748;
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .tip-card p {
+      color: #4a5568;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    /* Responsive design */
+    @media (max-width: 1024px) {
+      .main-card {
+        padding: 2rem;
+      }
+
+      .page-title {
+        font-size: 2rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .job-create-container {
+        padding: 0.5rem;
+      }
+
+      .main-card {
+        padding: 1.5rem;
+        border-radius: 15px;
+      }
+
+      .page-title {
+        font-size: 1.8rem;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .action-buttons,
+      .results-actions {
+        flex-direction: column;
+      }
+
+      .btn {
+        min-width: auto;
+        width: 100%;
+      }
+
+      #jobText {
+        min-height: 300px;
+        padding: 1rem;
+      }
+
+      .tips-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .main-card {
+        padding: 1rem;
+      }
+
+      .input-section,
+      .results-section,
+      .tips-section {
+        padding: 1rem;
+      }
+
+      .page-title {
+        font-size: 1.5rem;
+      }
+
+      .btn {
+        padding: 0.75rem 1.5rem;
+        font-size: 0.9rem;
+      }
+    }
+
+    /* Focus states for accessibility */
+    .btn:focus {
+      outline: 2px solid #667eea;
+      outline-offset: 2px;
+    }
+
+    /* Smooth transitions */
+    * {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  </style>
 
   <script>
+    // Enhanced job creation functionality
+    let currentJobData = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // Add smooth scroll behavior
+      document.documentElement.style.scrollBehavior = 'smooth';
+      
+      // Add entrance animation
+      const mainCard = document.querySelector('.main-card');
+      mainCard.style.opacity = '0';
+      mainCard.style.transform = 'translateY(30px)';
+      
+      setTimeout(() => {
+        mainCard.style.opacity = '1';
+        mainCard.style.transform = 'translateY(0)';
+      }, 100);
+
+      // Character and word count
+      const textarea = document.getElementById('jobText');
+      const charCount = document.getElementById('charCount');
+      const wordCount = document.getElementById('wordCount');
+
+      function updateCounts() {
+        const text = textarea.value;
+        const chars = text.length;
+        const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+        
+        charCount.textContent = `${chars.toLocaleString()} characters`;
+        wordCount.textContent = `${words.toLocaleString()} words`;
+      }
+
+      textarea.addEventListener('input', updateCounts);
+      updateCounts();
+
+      // Auto-resize textarea
+      textarea.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.max(400, this.scrollHeight) + 'px';
+      });
+    });
+
     function submitJobOffer() {
-      const text = document.getElementById("jobText").value;
+      const text = document.getElementById("jobText").value.trim();
+      
+      if (!text) {
+        alert('Please enter a job description before creating the offer.');
+        document.getElementById("jobText").focus();
+        return;
+      }
+
+      // Show loading state
+      showSection('loading');
+      
+      const submitBtn = document.getElementById('submitBtn');
+      const originalContent = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+      submitBtn.disabled = true;
 
       fetch('/create-job/', {
-
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
         body: JSON.stringify({ text: text })
       })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
-        document.getElementById("responseBox").textContent = JSON.stringify(data, null, 2);
+        currentJobData = data;
+        displayResults(data);
+        showSection('results');
       })
       .catch(error => {
-        document.getElementById("responseBox").textContent = "Error: " + error;
+        console.error('Error:', error);
+        showError(error.message);
+      })
+      .finally(() => {
+        // Reset button state
+        submitBtn.innerHTML = originalContent;
+        submitBtn.disabled = false;
       });
     }
+
+    function displayResults(data) {
+      const responseBox = document.getElementById("responseBox");
+      responseBox.innerHTML = `
+        <div class="job-preview">
+          <h4><i class="fas fa-briefcase"></i> Job Preview</h4>
+          <div class="job-details">
+            <strong>Title:</strong> ${data.title || 'N/A'}<br>
+            <strong>Company:</strong> ${data.company || 'N/A'}<br>
+            <strong>Location:</strong> ${data.location || 'N/A'}<br>
+            <strong>Contract Type:</strong> ${data.contract_type || 'N/A'}<br>
+            <strong>Experience Level:</strong> ${data.experience_level || 'N/A'}<br>
+            <strong>Salary Range:</strong> ${data.salary_range || 'N/A'}
+          </div>
+          
+          ${data.technologies && data.technologies.length > 0 ? `
+            <div class="tech-section">
+              <strong>Technologies:</strong>
+              <div class="tech-tags-preview">
+                ${data.technologies.map(tech => `<span class="tech-tag-mini">${tech}</span>`).join('')}
+              </div>
+            </div>
+          ` : ''}
+          
+          ${data.requirements && data.requirements.length > 0 ? `
+            <div class="requirements-preview">
+              <strong>Requirements (${data.requirements.length}):</strong>
+              <ul>
+                ${data.requirements.slice(0, 3).map(req => `<li>${req}</li>`).join('')}
+                ${data.requirements.length > 3 ? `<li><em>... and ${data.requirements.length - 3} more</em></li>` : ''}
+              </ul>
+            </div>
+          ` : ''}
+        </div>
+        
+        <details style="margin-top: 1rem;">
+          <summary style="cursor: pointer; font-weight: bold; color: #667eea;">View Raw JSON Data</summary>
+          <pre style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-top: 0.5rem; font-size: 0.8rem; overflow-x: auto;">${JSON.stringify(data, null, 2)}</pre>
+        </details>
+      `;
+
+      // Show action buttons
+      document.getElementById('saveJobBtn').style.display = 'flex';
+      document.querySelector('.btn-secondary').style.display = 'flex';
+    }
+
+    function showSection(section) {
+      // Hide all sections
+      document.getElementById('loadingSection').style.display = 'none';
+      document.getElementById('resultsSection').style.display = 'none';
+      document.getElementById('errorSection').style.display = 'none';
+
+      // Show requested section
+      if (section === 'loading') {
+        document.getElementById('loadingSection').style.display = 'block';
+      } else if (section === 'results') {
+        document.getElementById('resultsSection').style.display = 'block';
+      } else if (section === 'error') {
+        document.getElementById('errorSection').style.display = 'block';
+      }
+    }
+
+    function showError(message) {
+      document.getElementById('errorMessage').textContent = message;
+      showSection('error');
+    }
+
+    function clearForm() {
+      if (confirm('Are you sure you want to clear the form? This action cannot be undone.')) {
+        document.getElementById('jobText').value = '';
+        document.getElementById('charCount').textContent = '0 characters';
+        document.getElementById('wordCount').textContent = '0 words';
+        resetForm();
+      }
+    }
+
+    function resetForm() {
+      showSection('none');
+      currentJobData = null;
+      document.getElementById('jobText').focus();
+    }
+
+    function loadExample() {
+      const exampleJob = `Software Engineer - Full Stack Developer
+TechCorp Solutions, San Francisco, CA
+
+About the Role:
+We are looking for a passionate Full Stack Developer to join our growing team. You will be responsible for developing and maintaining web applications using modern technologies.
+
+Responsibilities:
+• Develop and maintain web applications using React and Node.js
+• Design and implement RESTful APIs
+• Work with PostgreSQL databases
+• Collaborate with cross-functional teams
+• Write clean, maintainable code
+• Participate in code reviews
+
+Requirements:
+• Bachelor's degree in Computer Science or related field
+• 3+ years of experience in full-stack development
+• Proficiency in JavaScript, React, and Node.js
+• Experience with PostgreSQL or similar databases
+• Knowledge of Git version control
+• Strong problem-solving skills
+• Excellent communication skills
+
+Nice to Have:
+• Experience with TypeScript
+• Knowledge of Docker and containerization
+• Familiarity with AWS or other cloud platforms
+• Experience with Agile methodologies
+
+Compensation:
+• Salary: $80,000 - $120,000
+• Full-time position
+• Excellent benefits package
+• Remote work options available`;
+
+      document.getElementById('jobText').value = exampleJob;
+      document.getElementById('jobText').dispatchEvent(new Event('input'));
+      document.getElementById('jobText').focus();
+    }
+
+    function saveJob() {
+      if (!currentJobData) {
+        alert('No job data to save!');
+        return;
+      }
+
+      // Here you would implement the actual save functionality
+      // For now, we'll just show a success message
+      alert('Job offer saved successfully! (This is a demo - implement actual save logic)');
+      
+      // Redirect to job management or detail page
+      // window.location.href = '/manage-jobs/';
+    }
+
+    function editJob() {
+      if (!currentJobData) {
+        alert('No job data to edit!');
+        return;
+      }
+
+      // Here you would redirect to the edit page with pre-filled data
+      alert('Edit functionality would redirect to the edit form with pre-filled data.');
+    }
+
+    function getCsrfToken() {
+      const token = document.querySelector('[name=csrfmiddlewaretoken]');
+      return token ? token.value : '';
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      // Ctrl+Enter to submit
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        submitJobOffer();
+      }
+      
+      // Ctrl+L to load example
+      if (e.ctrlKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        loadExample();
+      }
+      
+      // Ctrl+K to clear
+      if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        clearForm();
+      }
+    });
+
+    // Add custom styles for job preview
+    const style = document.createElement('style');
+    style.textContent = `
+      .job-preview {
+        background: #f8fafc;
+        border-left: 4px solid #667eea;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+      }
+      
+      .job-preview h4 {
+        color: #2d3748;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      
+      .job-details {
+        line-height: 1.8;
+        margin-bottom: 1rem;
+      }
+      
+      .tech-tags-preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-top: 0.5rem;
+      }
+      
+      .tech-tag-mini {
+        background: #667eea;
+        color: white;
+        padding: 0.2rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+      
+      .requirements-preview {
+        margin-top: 1rem;
+      }
+      
+      .requirements-preview ul {
+        margin: 0.5rem 0 0 1rem;
+        padding: 0;
+      }
+      
+      .requirements-preview li {
+        margin-bottom: 0.25rem;
+        line-height: 1.5;
+      }
+    `;
+    document.head.appendChild(style);
   </script>
 {% endblock %}

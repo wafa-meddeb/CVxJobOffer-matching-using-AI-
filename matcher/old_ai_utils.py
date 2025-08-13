@@ -1,13 +1,21 @@
+# # import os
+# import os
 # import re
 # import json
 # import requests
+# import base64
+# import io
 # from dotenv import load_dotenv
+# from pdf2image import convert_from_path
+# from PIL import Image
+# import fitz  # PyMuPDF - Add this import
 # import os
 
 # # Load .env for local dev. In production, set GROQ_API_KEY as a real env var.
 # load_dotenv()
 
 # GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
 # # Add this to test your token
 # print(f"API Key exists: {bool(GROQ_API_KEY)}")
 # print(f"API Key starts with: {GROQ_API_KEY[:10] if GROQ_API_KEY else 'None'}...")
@@ -16,17 +24,57 @@
 
 # # ---- Groq API Configuration ----
 # ROUTER_URL = "https://api.groq.com/openai/v1/chat/completions"
-# # Available Groq models (choose one):
-# # - "llama3-8b-8192" (Llama 3 8B)
-# # - "llama3-70b-8192" (Llama 3 70B)
-# # - "mixtral-8x7b-32768" (Mixtral 8x7B)
-# # - "gemma-7b-it" (Gemma 7B)
-# MODEL_ID = "llama3-8b-8192"
+
+# # Text models
+# TEXT_MODEL = "llama3-8b-8192"  
 
 # HEADERS = {
 #     "Authorization": f"Bearer {GROQ_API_KEY}",
 #     "Content-Type": "application/json",
 # }
+
+# # ---------------- PDF Text Extraction Helper ----------------
+
+# def extract_text_from_pdf(pdf_path):
+#     """
+#     Extract text from PDF using PyMuPDF (fitz).
+#     Returns the full text content of the PDF.
+#     """
+#     try:
+#         doc = fitz.open(pdf_path)
+#         full_text = ""
+        
+#         for page in doc:
+#             full_text += page.get_text()
+        
+#         doc.close()
+#         return full_text
+#     except Exception as e:
+#         print(f"Error extracting text from PDF: {e}")
+#         return ""
+
+# # ---------------- Image/PDF Helpers (kept for potential future use) ----------------
+
+# def encode_image_to_base64(image_path):
+#     """Convert image file to base64 string"""
+#     with open(image_path, "rb") as image_file:
+#         return base64.b64encode(image_file.read()).decode('utf-8')
+
+# def pil_image_to_base64(pil_image):
+#     """Convert PIL Image to base64 string"""
+#     buffer = io.BytesIO()
+#     pil_image.save(buffer, format="PNG")
+#     return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+# def pdf_to_images(pdf_path, dpi=150, max_pages=5):
+#     """Convert PDF to list of PIL images"""
+#     try:
+#         images = convert_from_path(pdf_path, dpi=dpi)
+#         print(f"Converted PDF to {len(images)} images (processing first {max_pages})")
+#         return images[:max_pages]  # Limit pages to save tokens
+#     except Exception as e:
+#         print(f"Error converting PDF: {e}")
+#         return []
 
 # # ---------------- Prompt Builders ----------------
 
@@ -61,39 +109,7 @@
 # Return ONLY valid JSON (no prose, no markdown fences).
 # """
 
-# # ---------------- JSON Extraction ----------------
-
-# # def extract_json_from_text(text: str) -> dict:
-# #     """
-# #     Find first balanced JSON object in text and parse it.
-# #     Removes trailing commas before closing } or ].
-# #     """
-# #     start = text.find("{")
-# #     if start == -1:
-# #         raise ValueError("No opening brace found in model output.")
-
-# #     brace_count = 0
-# #     end_index = None
-# #     for i, ch in enumerate(text[start:], start=start):
-# #         if ch == "{":
-# #             brace_count += 1
-# #         elif ch == "}":
-# #             brace_count -= 1
-# #         if brace_count == 0:
-# #             end_index = i + 1
-# #             break
-# #     if end_index is None:
-# #         raise ValueError("Unbalanced braces in model output.")
-
-# #     json_str = text[start:end_index]
-# #     # remove trailing commas before } or ]
-# #     json_str = re.sub(r",\s*([\]}])", r"\1", json_str)
-
-# #     try:
-# #         return json.loads(json_str)
-# #     except Exception as e:
-# #         raise ValueError(f"Error parsing JSON: {e}\n--- Raw snippet ---\n{json_str[:500]}")
-
+# # ---------------- JSON Extraction (Your existing function) ----------------
 
 # def extract_json_from_text(text: str) -> dict:
 #     """
@@ -214,14 +230,15 @@
                 
 #             except Exception as regex_error:
 #                 raise ValueError(f"Error parsing JSON: {e}\nRegex fallback failed: {regex_error}\nRaw JSON: {json_text[:500]}")
-# # ---------------- Router Call Helper ----------------
 
-# def _chat_completion(messages, temperature: float = 0.2, max_tokens: int = 800, timeout_s: int = 60) -> str:
+# # ---------------- Router Call Helpers ----------------
+
+# def _chat_completion(messages, model=TEXT_MODEL, temperature: float = 0.2, max_tokens: int = 800, timeout_s: int = 60) -> str:
 #     """
-#     Call HF Router chat completions and return the assistant message content (string).
+#     Call Groq API chat completions and return the assistant message content (string).
 #     """
 #     payload = {
-#         "model": MODEL_ID,
+#         "model": model,
 #         "messages": messages,  # list of {"role": "user"/"system"/"assistant", "content": "..."}
 #         "temperature": temperature,
 #         "max_tokens": max_tokens,
@@ -241,7 +258,7 @@
 #     except Exception:
 #         raise RuntimeError(f"Unexpected Router response format: {data}")
 
-# # ---------------- Public Parsing Functions ----------------
+# # ---------------- Public Parsing Functions (Text) ----------------
 
 # def parse_cv_with_llm(cv_text: str) -> dict:
 #     """
@@ -264,3 +281,75 @@
 #         {"role": "user", "content": prompt},
 #     ])
 #     return extract_json_from_text(content.strip())
+
+# # ---------------- NEW: PDF Text-Based Parsing Functions ----------------
+
+# def parse_cv_from_pdf(pdf_path: str) -> dict:
+#     """
+#     Parse CV from PDF by extracting text and processing with text LLM.
+#     """
+#     try:
+#         # Extract text from PDF
+#         cv_text = extract_text_from_pdf(pdf_path)
+        
+#         if not cv_text.strip():
+#             raise ValueError("No text could be extracted from PDF")
+        
+#         print(f"Extracted text length: {len(cv_text)} characters")
+#         print(f"Text preview: {cv_text[:200]}...")
+        
+#         # Process with text LLM
+#         return parse_cv_with_llm(cv_text)
+        
+#     except Exception as e:
+#         print(f"Error parsing CV from PDF: {e}")
+#         raise
+
+# def parse_job_offer_from_pdf(pdf_path: str) -> dict:
+#     """
+#     Parse job offer from PDF by extracting text and processing with text LLM.
+#     """
+#     try:
+#         # Extract text from PDF
+#         job_text = extract_text_from_pdf(pdf_path)
+        
+#         if not job_text.strip():
+#             raise ValueError("No text could be extracted from PDF")
+        
+#         print(f"Extracted text length: {len(job_text)} characters")
+#         print(f"Text preview: {job_text[:200]}...")
+        
+#         # Process with text LLM
+#         return parse_job_offer_with_llm(job_text)
+        
+#     except Exception as e:
+#         print(f"Error parsing job offer from PDF: {e}")
+#         raise
+
+# # ---------------- Legacy Vision Functions (kept for reference, can be removed) ----------------
+
+# def _vision_completion(prompt, base64_image, temperature: float = 0.2, max_tokens: int = 1000, timeout_s: int = 90) -> str:
+#     """
+#     Call Groq Vision API with image and text prompt.
+#     NOTE: This function is kept for reference but not used in the new text-based approach.
+#     """
+#     # Vision model (uncomment if needed)
+#     # VISION_MODEL = "llava-v1.5-7b-4096-preview"
+#     pass  # Implementation removed as we're using text-based approach
+
+# def parse_cv_from_image(image_path: str) -> dict:
+#     """
+#     Parse CV from an image file using vision model.
+#     NOTE: This function is kept for reference but not used in the new text-based approach.
+#     """
+#     pass  # Implementation removed as we're using text-based approach
+
+# def parse_job_offer_from_image(image_path: str) -> dict:
+#     """
+#     Parse job offer from an image file using vision model.
+#     NOTE: This function is kept for reference but not used in the new text-based approach.
+#     """
+#     pass  # Implementation removed as we're using text-based approach
+
+
+

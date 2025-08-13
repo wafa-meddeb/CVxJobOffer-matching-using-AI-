@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="resume-detail-container">
+  <div class="resume-detail-header">
+    <a href="{% url 'manage_resumes' %}" class="back-btn">← Back to Resumes</a>
+  </div>
+
+  <div class="resume-cards-container">
+    <div class="resume-card">
+      <div class="resume-card-header">
+        <h1 class="candidate-name">{{ resume.name }}</h1>
+        <div class="upload-date">{{ resume.uploaded_at|date:"M d, Y" }}</div>
+      </div>
+
+      <div class="resume-card-body">
+        <div class="contact-info">
+          {% if resume.email %}
+          <div class="contact-item">
+            <span class="contact-label">📧</span>
+            <span class="contact-value">{{ resume.email }}</span>
+          </div>
+          {% endif %}
+
+          {% if resume.phone %}
+          <div class="contact-item">
+            <span class="contact-label">📱</span>
+            <span class="contact-value">{{ resume.phone }}</span>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if resume.summary %}
+        <div class="summary-section">
+          <h4>Summary</h4>
+          <p class="summary-text">{{ resume.summary|linebreaks }}</p>
+        </div>
+        {% endif %}
+
+        {% if resume.skills %}
+        <div class="skills-section">
+          <h4>Skills</h4>
+          <div class="skills-tags">
+            {% for skill in resume.skills %}
+              <span class="skill-tag">{{ skill }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if resume.languages %}
+        <div class="languages-section">
+          <h4>Languages</h4>
+          <div class="languages-list">
+            {% for lang in resume.languages %}
+              <span class="language-item">{{ lang }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if resume.experience %}
+        <div class="experience-section">
+          <h4>Experience</h4>
+          {% for exp in resume.experience %}
+            <div class="experience-item">
+              <div class="exp-title">{{ exp.title }}</div>
+              <div class="exp-company">{{ exp.company }}</div>
+              {% if exp.years %}<div class="exp-years">{{ exp.years }}</div>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if resume.education %}
+        <div class="education-section">
+          <h4>Education</h4>
+          {% for edu in resume.education %}
+            <div class="education-item">
+              <div class="edu-degree">{{ edu.degree }}</div>
+              <div class="edu-school">{{ edu.school }}</div>
+              {% if edu.years %}<div class="edu-years">{{ edu.years }}</div>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if resume.certificates %}
+        <div class="certificates-section">
+          <h4>Certificates</h4>
+          <ul class="certificates-list">
+            {% for cert in resume.certificates %}
+              <li>{{ cert }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="resume-card-footer">
+        <div class="cv-id">ID: {{ resume.cv_id }}</div>
+        <a href="{% url 'resume_delete_confirm' resume.cv_id %}" class="btn-small btn-danger">Delete Resume</a>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+    /* Main container for the grid */
+    .resume-cards-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 2rem;
+      margin-top: 1.5rem;
+      padding: 0 1rem;
+    }
+
+    .resume-card {
+      background: white;
+      border: 1px solid #e1e5e9;
+      border-radius: 16px;
+      padding: 1.75rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      height: fit-content;
+      min-height: 500px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .resume-card:hover {
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      transform: translateY(-4px);
+      border-color: #007bff;
+    }
+
+    .resume-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.25rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid #f0f4f8;
+    }
+
+    .candidate-name {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #1a202c;
+      margin: 0;
+      flex: 1;
+      line-height: 1.3;
+    }
+
+    .upload-date {
+      font-size: 0.8rem;
+      color: #718096;
+      background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+      padding: 0.4rem 0.9rem;
+      border-radius: 25px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .resume-card-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .contact-info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+    }
+
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: #f8fafc;
+      padding: 0.5rem 0.8rem;
+      border-radius: 10px;
+      min-width: 0;
+    }
+
+    .contact-label {
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .contact-value {
+      font-size: 0.9rem;
+      color: #4a5568;
+      font-weight: 500;
+      word-break: break-all;
+    }
+
+    .summary-section,
+    .skills-section,
+    .languages-section,
+    .certificates-section {
+      background: #fafbfc;
+      padding: 1rem;
+      border-radius: 12px;
+      border-left: 4px solid #e2e8f0;
+    }
+
+    .summary-section h4,
+    .skills-section h4,
+    .languages-section h4,
+    .certificates-section h4,
+    .experience-section h4,
+    .education-section h4 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #2d3748;
+      margin: 0 0 0.75rem 0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .summary-text {
+      font-size: 0.9rem;
+      color: #718096;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .skills-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+
+    .skill-tag {
+      background: linear-gradient(135deg, #e6f3ff 0%, #cce7ff 100%);
+      color: #0066cc;
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid #b3d9ff;
+    }
+
+    .languages-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+
+    .language-item {
+      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+      color: #856404;
+      padding: 0.4rem 0.9rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid #f1c40f;
+    }
+
+    .experience-item,
+    .education-item {
+      margin-bottom: 0.75rem;
+      padding: 0.75rem;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .exp-title,
+    .edu-degree {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #2d3748;
+      margin-bottom: 0.4rem;
+      line-height: 1.3;
+    }
+
+    .exp-company,
+    .edu-school {
+      font-size: 0.8rem;
+      color: #718096;
+      margin-bottom: 0.3rem;
+      font-weight: 500;
+    }
+
+    .exp-years,
+    .edu-years {
+      font-size: 0.75rem;
+      color: #a0aec0;
+      font-weight: 600;
+    }
+
+    .resume-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: auto;
+      padding-top: 1.5rem;
+      border-top: 2px solid #f0f4f8;
+    }
+
+    .cv-id {
+      font-size: 0.75rem;
+      color: #a0aec0;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      background: #f7fafc;
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .btn-small {
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      color: white;
+      border: 2px solid #007bff;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+      border-color: #0056b3;
+      transform: translateY(-1px);
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        border: 2px solid #dc3545;
+      }
+      
+      .btn-danger:hover {
+        background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+        border-color: #bd2130;
+        transform: translateY(-1px);
+      }
+      
+</style>
+{% endblock %}

@@ -2,34 +2,2000 @@
 {% load static %}
 
 {% block content %}
-  <div class="card">
-    <h2>Analytics Dashboard</h2>
-    <div class="dashboard">
-      <div class="metric">
-        <p>Total Jobs</p>
-        <h3>0</h3>
-      </div>
-      <div class="metric">
-        <p>Total Resumes</p>
-        <h3>0</h3>
-      </div>
-      <div class="metric">
-        <p>Total Matches</p>
-        <h3>0</h3>
-      </div>
-      <div class="metric">
-        <p>Avg. Score</p>
-        <h3>0%</h3>
-      </div>
+<div class="analytics-container">
+    <!-- Header Section -->
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1 class="dashboard-title">
+                <i class="fas fa-chart-bar"></i>
+                Analytics Dashboard
+            </h1>
+            <p class="dashboard-subtitle">
+                Comprehensive insights into your resume matching system performance
+            </p>
+        </div>
+        <div class="dashboard-actions">
+            <button id="refresh-all-btn" class="btn btn-primary">
+                <i class="fas fa-sync-alt"></i>
+                Refresh All
+            </button>
+            <button id="export-btn" class="btn btn-secondary">
+                <i class="fas fa-download"></i>
+                Export Data
+            </button>
+        </div>
     </div>
 
-    <h3 style="margin-top: 2rem;">Match Score Distribution</h3>
-    <ul>
-      <li>90-100% – 0</li>
-      <li>80-89% – 0</li>
-      <li>70-79% – 0</li>
-      <li>60-69% – 0</li>
-      <li><60% – 0</li>
-    </ul>
-  </div>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Loading analytics data...</p>
+        </div>
+    </div>
+
+    <!-- Error Alert -->
+    <div id="error-alert" class="error-alert" style="display: none;">
+        <div class="error-content">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="error-message">An error occurred while loading data</span>
+            <button id="retry-btn" class="btn btn-small">Retry</button>
+        </div>
+    </div>
+
+    <!-- Main Statistics Cards -->
+    <div class="stats-grid">
+        <div class="metric-card" data-metric="jobs">
+            <div class="metric-icon">
+                <i class="fas fa-briefcase"></i>
+            </div>
+            <div class="metric-content">
+                <p class="metric-label">Total Jobs</p>
+                <h3 class="metric-value" id="total-jobs">0</h3>
+                <span class="metric-change" id="jobs-change">
+                    <i class="fas fa-arrow-up"></i>
+                    +0% from last week
+                </span>
+            </div>
+        </div>
+        
+        <div class="metric-card" data-metric="resumes">
+            <div class="metric-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="metric-content">
+                <p class="metric-label">Total Resumes</p>
+                <h3 class="metric-value" id="total-resumes">0</h3>
+                <span class="metric-change" id="resumes-change">
+                    <i class="fas fa-arrow-up"></i>
+                    +0% from last week
+                </span>
+            </div>
+        </div>
+        
+        <div class="metric-card" data-metric="matches">
+            <div class="metric-icon">
+                <i class="fas fa-bullseye"></i>
+            </div>
+            <div class="metric-content">
+                <p class="metric-label">Total Matches</p>
+                <h3 class="metric-value" id="total-matches">0</h3>
+                <span class="metric-change" id="matches-change">
+                    <i class="fas fa-arrow-up"></i>
+                    +0% from last week
+                </span>
+            </div>
+        </div>
+        
+        <div class="metric-card" data-metric="score">
+            <div class="metric-icon">
+                <i class="fas fa-star"></i>
+            </div>
+            <div class="metric-content">
+                <p class="metric-label">Avg. Score</p>
+                <h3 class="metric-value" id="avg-score">0%</h3>
+                <span class="metric-change" id="score-change">
+                    Best: <span id="max-score">0</span>%
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="charts-section">
+        <!-- Match Score Distribution -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title-group">
+                    <h3>
+                        <i class="fas fa-chart-pie"></i>
+                        Match Score Distribution
+                    </h3>
+                    <p class="chart-subtitle">Distribution of matching scores across all candidates</p>
+                </div>
+                <div class="chart-controls">
+                    <button class="btn-filter active" data-period="all">All Time</button>
+                    <button class="btn-filter" data-period="30">30 Days</button>
+                    <button class="btn-filter" data-period="7">7 Days</button>
+                </div>
+            </div>
+            <div class="chart-content">
+                <div class="score-distribution" id="score-distribution">
+                    <div class="score-bar" data-range="90-100">
+                        <div class="score-label">
+                            <span class="score-range">
+                                <i class="fas fa-trophy"></i>
+                                90-100% (Excellent)
+                            </span>
+                            <span class="score-count" id="score-90-100">0</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill excellent" style="width: 0%" id="bar-90-100"></div>
+                        </div>
+                    </div>
+                    <div class="score-bar" data-range="80-89">
+                        <div class="score-label">
+                            <span class="score-range">
+                                <i class="fas fa-medal"></i>
+                                80-89% (Very Good)
+                            </span>
+                            <span class="score-count" id="score-80-89">0</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill good" style="width: 0%" id="bar-80-89"></div>
+                        </div>
+                    </div>
+                    <div class="score-bar" data-range="70-79">
+                        <div class="score-label">
+                            <span class="score-range">
+                                <i class="fas fa-thumbs-up"></i>
+                                70-79% (Good)
+                            </span>
+                            <span class="score-count" id="score-70-79">0</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill average" style="width: 0%" id="bar-70-79"></div>
+                        </div>
+                    </div>
+                    <div class="score-bar" data-range="60-69">
+                        <div class="score-label">
+                            <span class="score-range">
+                                <i class="fas fa-meh"></i>
+                                60-69% (Fair)
+                            </span>
+                            <span class="score-count" id="score-60-69">0</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill below-average" style="width: 0%" id="bar-60-69"></div>
+                        </div>
+                    </div>
+                    <div class="score-bar" data-range="below-60">
+                        <div class="score-label">
+                            <span class="score-range">
+                                <i class="fas fa-frown"></i>
+                                &lt;60% (Needs Improvement)
+                            </span>
+                            <span class="score-count" id="score-below-60">0</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill poor" style="width: 0%" id="bar-below-60"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Timeline -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title-group">
+                    <h3>
+                        <i class="fas fa-chart-line"></i>
+                        Matching Activity Timeline
+                    </h3>
+                    <p class="chart-subtitle">Daily matching activity and average scores over time</p>
+                </div>
+                <div class="refresh-indicator">
+                    <span>Last updated: <span id="last-updated">Never</span></span>
+                    <button class="btn-refresh" id="refresh-chart-btn">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="chart-content">
+                <div class="chart-container">
+                    <canvas id="activity-chart"></canvas>
+                </div>
+                <div class="chart-legend" id="chart-legend">
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #4299e1;"></span>
+                        <span>Daily Matches</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color" style="background: #10b981;"></span>
+                        <span>Average Score</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Section -->
+    <div class="details-section">
+        <!-- Top Matches -->
+        <div class="detail-card">
+            <div class="detail-header">
+                <div class="header-info">
+                    <h3>
+                        <i class="fas fa-trophy"></i>
+                        Top Matches
+                    </h3>
+                    <span class="detail-subtitle">Highest scoring candidate-job matches</span>
+                </div>
+                <button class="btn btn-small" id="view-all-matches">View All</button>
+            </div>
+            <div class="detail-content">
+                <div class="top-matches-list" id="top-matches-list">
+                    <div class="loading-state">
+                        <div class="loading-skeleton"></div>
+                        <div class="loading-skeleton"></div>
+                        <div class="loading-skeleton"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="detail-card">
+            <div class="detail-header">
+                <div class="header-info">
+                    <h3>
+                        <i class="fas fa-clock"></i>
+                        Recent Activity
+                    </h3>
+                    <span class="detail-subtitle">Latest matching operations</span>
+                </div>
+                <button class="btn btn-small" id="view-all-activity">View All</button>
+            </div>
+            <div class="detail-content">
+                <div class="recent-activity-list" id="recent-activity-list">
+                    <div class="loading-state">
+                        <div class="loading-skeleton"></div>
+                        <div class="loading-skeleton"></div>
+                        <div class="loading-skeleton"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Insights Section -->
+    <div class="insights-section">
+        <div class="insight-card">
+            <div class="insight-header">
+                <h3>
+                    <i class="fas fa-building"></i>
+                    Top Companies
+                </h3>
+                <span class="insight-subtitle">Most active employers</span>
+            </div>
+            <div class="insight-content">
+                <div id="top-companies" class="insight-list">
+                    <div class="loading-state">
+                        <div class="loading-skeleton small"></div>
+                        <div class="loading-skeleton small"></div>
+                        <div class="loading-skeleton small"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="insight-card">
+            <div class="insight-header">
+                <h3>
+                    <i class="fas fa-tools"></i>
+                    Most Demanded Skills
+                </h3>
+                <span class="insight-subtitle">Top skills in job requirements</span>
+            </div>
+            <div class="insight-content">
+                <div id="top-skills" class="insight-list">
+                    <div class="loading-state">
+                        <div class="loading-skeleton small"></div>
+                        <div class="loading-skeleton small"></div>
+                        <div class="loading-skeleton small"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="insight-card">
+            <div class="insight-header">
+                <h3>
+                    <i class="fas fa-graduation-cap"></i>
+                    Experience Levels
+                </h3>
+                <span class="insight-subtitle">Distribution by experience</span>
+            </div>
+            <div class="insight-content">
+                <div id="experience-levels" class="insight-list">
+                    <div class="loading-state">
+                        <div class="loading-skeleton small"></div>
+                        <div class="loading-skeleton small"></div>
+                        <div class="loading-skeleton small"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Base Styles */
+.analytics-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f8fafc;
+    min-height: 100vh;
+}
+
+/* Dashboard Header */
+.dashboard-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.header-content h1.dashboard-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.dashboard-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin: 0.5rem 0 0 0;
+}
+
+.dashboard-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.loading-overlay.hidden {
+    display: none;
+}
+
+.loading-spinner {
+    text-align: center;
+    color: #4a5568;
+}
+
+.spinner {
+    border: 4px solid #f3f4f6;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Error Alert */
+.error-alert {
+    background: #fed7d7;
+    border: 1px solid #fc8181;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.error-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.error-content i {
+    color: #e53e3e;
+    font-size: 1.2rem;
+}
+
+/* Buttons */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+    color: white;
+}
+
+.btn-secondary {
+    background: #edf2f7;
+    color: #4a5568;
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+}
+
+.btn-refresh {
+    background: none;
+    border: none;
+    color: #718096;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-refresh:hover {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.metric-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.metric-card:nth-child(1)::before { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.metric-card:nth-child(2)::before { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.metric-card:nth-child(3)::before { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.metric-card:nth-child(4)::before { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+.metric-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.metric-card:nth-child(1) .metric-icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.metric-card:nth-child(2) .metric-icon { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.metric-card:nth-child(3) .metric-icon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.metric-card:nth-child(4) .metric-icon { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+
+.metric-content {
+    flex: 1;
+}
+
+.metric-label {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: #718096;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-value {
+    margin: 0 0 0.5rem 0;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #2d3748;
+    line-height: 1;
+}
+
+.metric-change {
+    font-size: 0.85rem;
+    color: #48bb78;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Charts Section */
+.charts-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 1024px) {
+    .charts-section {
+        grid-template-columns: 1fr;
+    }
+}
+
+.chart-card {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    gap: 1rem;
+}
+
+.chart-title-group h3 {
+    margin: 0 0 0.5rem 0;
+    color: #2d3748;
+    font-size: 1.4rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.chart-subtitle {
+    margin: 0;
+    color: #718096;
+    font-size: 0.9rem;
+}
+
+.chart-controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.btn-filter {
+    padding: 0.5rem 1rem;
+    border: 1px solid #e2e8f0;
+    background: white;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.btn-filter:hover,
+.btn-filter.active {
+    background: #4299e1;
+    color: white;
+    border-color: #4299e1;
+}
+
+.chart-content {
+    position: relative;
+}
+
+/* Score Distribution */
+.score-distribution {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.score-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.score-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.score-range {
+    font-size: 0.9rem;
+    color: #4a5568;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.score-count {
+    background: #f7fafc;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+.progress-bar {
+    height: 16px;
+    background: #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 8px;
+    position: relative;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.progress-fill.excellent { background: linear-gradient(90deg, #48bb78, #68d391); }
+.progress-fill.good { background: linear-gradient(90deg, #4299e1, #63b3ed); }
+.progress-fill.average { background: linear-gradient(90deg, #ed8936, #f6ad55); }
+.progress-fill.below-average { background: linear-gradient(90deg, #f56565, #fc8181); }
+.progress-fill.poor { background: linear-gradient(90deg, #e53e3e, #feb2b2); }
+
+/* Chart Container */
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin-bottom: 1rem;
+}
+
+#activity-chart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.chart-legend {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #4a5568;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.refresh-indicator {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: #718096;
+}
+
+/* Details Section */
+.details-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+    .details-section {
+        grid-template-columns: 1fr;
+    }
+}
+
+.detail-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+}
+
+.detail-header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-info h3 {
+    margin: 0 0 0.25rem 0;
+    color: #2d3748;
+    font-size: 1.2rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.detail-subtitle {
+    color: #718096;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.detail-content {
+    padding: 1.5rem 2rem;
+}
+
+/* Match Items */
+.top-matches-list,
+.recent-activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.match-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 12px;
+    border-left: 4px solid #4299e1;
+    transition: all 0.2s ease;
+}
+
+.match-item:hover {
+    background: #edf2f7;
+    transform: translateX(4px);
+}
+
+.match-info {
+    flex: 1;
+}
+
+.match-title {
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0 0 0.25rem 0;
+    font-size: 0.95rem;
+}
+
+.match-details {
+    color: #718096;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.match-score {
+    background: linear-gradient(135deg, #4299e1, #3182ce);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    min-width: 60px;
+    text-align: center;
+}
+
+/* Insights Section */
+.insights-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2rem;
+}
+
+.insight-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+}
+
+.insight-header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.insight-header h3 {
+    margin: 0 0 0.25rem 0;
+    color: #2d3748;
+    font-size: 1.2rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.insight-subtitle {
+    color: #718096;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.insight-content {
+    padding: 1.5rem 2rem;
+}
+
+.insight-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.insight-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.insight-item:last-child {
+    border-bottom: none;
+}
+
+.insight-name {
+    color: #2d3748;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.insight-count {
+    background: #edf2f7;
+    color: #4a5568;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+/* Loading States */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.loading-skeleton {
+    height: 60px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 8px;
+}
+
+.loading-skeleton.small {
+    height: 40px;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .dashboard-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 768px) {
+    .analytics-container {
+        padding: 1rem;
+    }
+    
+    .dashboard-header {
+        padding: 1.5rem;
+    }
+    
+    .dashboard-title {
+        font-size: 2rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .metric-card {
+        padding: 1.5rem;
+    }
+    
+    .chart-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .chart-controls {
+        order: -1;
+        width: 100%;
+    }
+    
+    .btn-filter {
+        flex: 1;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .dashboard-actions {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .detail-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .match-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .match-score {
+        align-self: flex-end;
+    }
+}
+
+/* Animation Classes */
+.animate-in {
+    animation: slideInUp 0.6s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.metric-value.counting {
+    animation: pulse 0.3s ease-in-out;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+</style>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+// Enhanced Analytics Dashboard Class
+class AnalyticsDashboard {
+    constructor() {
+        this.data = {};
+        this.refreshInterval = null;
+        this.lastUpdated = null;
+        this.currentPeriod = 'all';
+        this.activityChart = null;
+        this.isLoading = false;
+        this.retryCount = 0;
+        this.maxRetries = 3;
+
+        // API endpoints configuration
+        this.endpoints = {
+            main: '/api/analytics/',
+            topMatches: '/api/analytics/matches/top/',
+            recentActivity: '/api/analytics/activity/recent/',
+            companies: '/api/analytics/companies/',
+            skills: '/api/analytics/skills/'
+        };
+
+        // Performance monitoring
+        this.performanceMetrics = {
+            loadTimes: [],
+            errorCounts: {},
+            lastSuccessfulLoad: null
+        };
+    }
+
+    // Initialize the dashboard
+    async init() {
+        try {
+            this.showLoading();
+            this.setupEventListeners();
+            await this.loadInitialData();
+            this.startAutoRefresh();
+            this.hideLoading();
+            this.addAnimations();
+        } catch (error) {
+            this.handleError('Failed to initialize dashboard', error);
+        }
+    }
+
+    // Setup all event listeners
+    setupEventListeners() {
+        // Period filter buttons
+        document.querySelectorAll('.btn-filter').forEach(btn => {
+            btn.addEventListener('click', (e) => this.handlePeriodChange(e));
+        });
+
+        // Refresh buttons
+        const refreshAllBtn = document.getElementById('refresh-all-btn');
+        if (refreshAllBtn) {
+            refreshAllBtn.addEventListener('click', () => this.refreshAllData());
+        }
+
+        const refreshChartBtn = document.getElementById('refresh-chart-btn');
+        if (refreshChartBtn) {
+            refreshChartBtn.addEventListener('click', () => this.refreshChart());
+        }
+
+        const retryBtn = document.getElementById('retry-btn');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => this.retryLoad());
+        }
+
+        // Export functionality
+        const exportBtn = document.getElementById('export-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportData());
+        }
+
+        // View all buttons
+        const viewAllMatchesBtn = document.getElementById('view-all-matches');
+        if (viewAllMatchesBtn) {
+            viewAllMatchesBtn.addEventListener('click', () => this.viewAllMatches());
+        }
+
+        const viewAllActivityBtn = document.getElementById('view-all-activity');
+        if (viewAllActivityBtn) {
+            viewAllActivityBtn.addEventListener('click', () => this.viewAllActivity());
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+
+        // Window resize handling
+        window.addEventListener('resize', this.debounce(() => this.handleResize(), 250));
+
+        // Visibility change handling (pause/resume auto-refresh)
+        document.addEventListener('visibilitychange', () => this.handleVisibilityChange());
+    }
+
+    // Handle period filter changes
+    handlePeriodChange(e) {
+        document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        this.currentPeriod = e.target.dataset.period;
+        this.loadInitialData();
+    }
+
+    // Load all dashboard data
+    async loadInitialData() {
+        if (this.isLoading) return;
+        
+        const startTime = performance.now();
+        this.isLoading = true;
+        this.showLoading();
+
+        try {
+            // Fetch all data in parallel with timeout
+            const promises = [
+                this.fetchWithTimeout(this.withPeriod(this.endpoints.main)),
+                this.fetchWithTimeout(this.withPeriod(this.endpoints.topMatches, { limit: 10 })),
+                this.fetchWithTimeout(this.withPeriod(this.endpoints.recentActivity, { limit: 10 })),
+                this.fetchWithTimeout(`${this.endpoints.companies}?limit=10`),
+                this.fetchWithTimeout(`${this.endpoints.skills}?limit=15`)
+            ];
+
+            const [mainRes, topRes, recentRes, companiesRes, skillsRes] = await Promise.all(promises);
+
+            // Validate responses
+            this.validateResponses([mainRes, topRes, recentRes, companiesRes, skillsRes]);
+
+            // Process and store data
+            this.processData({
+                main: mainRes,
+                topMatches: topRes,
+                recentActivity: recentRes,
+                companies: companiesRes,
+                skills: skillsRes
+            });
+
+            // Render all components
+            await this.renderAllComponents();
+
+            // Update performance metrics
+            const loadTime = performance.now() - startTime;
+            this.updatePerformanceMetrics(loadTime);
+            this.resetRetryCount();
+
+        } catch (error) {
+            this.handleLoadError(error);
+        } finally {
+            this.isLoading = false;
+            this.hideLoading();
+            this.updateLastUpdated();
+        }
+    }
+
+    // Fetch with timeout and retry logic
+    async fetchWithTimeout(url, timeout = 10000) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        try {
+            const response = await fetch(url, {
+                signal: controller.signal,
+                headers: { 'Accept': 'application/json' }
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                throw new Error(`Request timeout for ${url}`);
+            }
+            throw error;
+        }
+    }
+
+    // Validate API responses
+    validateResponses(responses) {
+        responses.forEach((response, index) => {
+            if (!response || typeof response !== 'object') {
+                throw new Error(`Invalid response format at index ${index}`);
+            }
+            if (!response.success && !response.items && !response.statistics) {
+                throw new Error(`API error: ${response.error || 'Unknown error'}`);
+            }
+        });
+    }
+
+    // Process raw API data
+    processData(rawData) {
+        this.data = {
+            statistics: rawData.main.statistics || this.getDefaultStats(),
+            score_distribution: rawData.main.score_distribution || this.getDefaultDistribution(),
+            weekly_trends: rawData.main.weekly_trends || [],
+            top_matches: rawData.topMatches.items || [],
+            recent_activity: rawData.recentActivity.items || [],
+            top_companies: rawData.companies.items || [],
+            top_skills: rawData.skills.items || [],
+            experience_levels: rawData.main.experience_levels || []
+        };
+    }
+
+    // Render all dashboard components
+    async renderAllComponents() {
+        const renderPromises = [
+            this.renderMainStats(),
+            this.renderScoreDistribution(),
+            this.renderTopMatches(),
+            this.renderRecentActivity(),
+            this.renderInsights(),
+            this.renderActivityTimeline()
+        ];
+
+        await Promise.all(renderPromises);
+    }
+
+    // Render main statistics cards with animations
+    renderMainStats() {
+        const stats = this.data.statistics;
+        
+        // Animate counters with staggered timing
+        setTimeout(() => this.animateCounter('total-jobs', stats.total_jobs || 0), 100);
+        setTimeout(() => this.animateCounter('total-resumes', stats.total_resumes || 0), 200);
+        setTimeout(() => this.animateCounter('total-matches', stats.total_matches || 0), 300);
+        setTimeout(() => this.animateCounter('avg-score', stats.avg_score || 0, '%', 1), 400);
+
+        // Update additional metrics
+        const maxScoreEl = document.getElementById('max-score');
+        if (maxScoreEl) {
+            maxScoreEl.textContent = Number(stats.max_score || 0).toFixed(1);
+        }
+
+        // Update trend indicators
+        this.updateTrendIndicators(stats);
+    }
+
+    // Enhanced counter animation with easing
+    animateCounter(elementId, endValue, suffix = '', decimals = 0) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+
+        const startValue = 0;
+        const duration = 1500;
+        const startTime = performance.now();
+        
+        element.classList.add('counting');
+
+        const animate = (currentTime) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Easing function for smooth animation
+            const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+            const currentValue = startValue + (endValue - startValue) * easeOutCubic;
+            
+            element.textContent = currentValue.toFixed(decimals) + suffix;
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                element.classList.remove('counting');
+            }
+        };
+
+        requestAnimationFrame(animate);
+    }
+
+    // Render score distribution with enhanced animations
+    renderScoreDistribution() {
+        const distribution = this.data.score_distribution || {};
+        const total = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+
+        const ranges = [
+            { key: '90-100', id: '90-100' },
+            { key: '80-89', id: '80-89' },
+            { key: '70-79', id: '70-79' },
+            { key: '60-69', id: '60-69' },
+            { key: '<60', id: 'below-60' }
+        ];
+
+        ranges.forEach(({ key, id }, index) => {
+            const count = distribution[key] || 0;
+            const percentage = total > 0 ? (count / total) * 100 : 0;
+
+            const countEl = document.getElementById(`score-${id}`);
+            const barEl = document.getElementById(`bar-${id}`);
+
+            if (countEl) {
+                setTimeout(() => this.animateCounter(`score-${id}`, count), index * 100);
+            }
+
+            if (barEl) {
+                setTimeout(() => {
+                    barEl.style.width = `${percentage}%`;
+                }, index * 150);
+            }
+        });
+    }
+
+    // Render top matches with proper error handling
+    renderTopMatches() {
+        const container = document.getElementById('top-matches-list');
+        if (!container) return;
+
+        const matches = this.data.top_matches || [];
+
+        if (matches.length === 0) {
+            container.innerHTML = this.getEmptyState('No matches found', 'trophy');
+            return;
+        }
+
+        container.innerHTML = matches.map((match, index) => `
+            <div class="match-item" style="animation-delay: ${index * 100}ms;">
+                <div class="match-info">
+                    <div class="match-title">
+                        ${this.escapeHtml(match.cv_name)} → ${this.escapeHtml(match.job_title)}
+                    </div>
+                    <div class="match-details">
+                        <i class="fas fa-building"></i>
+                        ${this.escapeHtml(match.company || 'Unknown Company')}
+                        <i class="fas fa-calendar"></i>
+                        ${this.formatDate(match.matched_at)}
+                    </div>
+                </div>
+                <div class="match-score">${Number(match.score || 0).toFixed(1)}%</div>
+            </div>
+        `).join('');
+
+        // Add animation class
+        container.classList.add('animate-in');
+    }
+
+    // Render recent activity
+    renderRecentActivity() {
+        const container = document.getElementById('recent-activity-list');
+        if (!container) return;
+
+        const activities = this.data.recent_activity || [];
+
+        if (activities.length === 0) {
+            container.innerHTML = this.getEmptyState('No recent activity', 'clock');
+            return;
+        }
+
+        container.innerHTML = activities.map((activity, index) => `
+            <div class="match-item" style="animation-delay: ${index * 100}ms;">
+                <div class="match-info">
+                    <div class="match-title">
+                        ${this.escapeHtml(activity.cv_name)} → ${this.escapeHtml(activity.job_title)}
+                    </div>
+                    <div class="match-details">
+                        <i class="fas fa-building"></i>
+                        ${this.escapeHtml(activity.company || 'Unknown Company')}
+                        <i class="fas fa-clock"></i>
+                        ${this.formatRelativeTime(activity.matched_at)}
+                    </div>
+                </div>
+                <div class="match-score">${Number(activity.score || 0).toFixed(1)}%</div>
+            </div>
+        `).join('');
+
+        container.classList.add('animate-in');
+    }
+
+    // Render insights sections
+    renderInsights() {
+        this.renderInsightList('top-companies', this.data.top_companies, 'building');
+        this.renderInsightList('top-skills', this.data.top_skills, 'tools');
+        this.renderInsightList('experience-levels', this.data.experience_levels, 'graduation-cap');
+    }
+
+    // Render individual insight list
+    renderInsightList(containerId, data, icon) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const items = data || [];
+
+        if (items.length === 0) {
+            container.innerHTML = this.getEmptyState('No data available', icon);
+            return;
+        }
+
+        container.innerHTML = items.map((item, index) => `
+            <div class="insight-item" style="animation-delay: ${index * 50}ms;">
+                <span class="insight-name">${this.escapeHtml(item.name)}</span>
+                <span class="insight-count">${this.escapeHtml(String(item.count))}</span>
+            </div>
+        `).join('');
+
+        container.classList.add('animate-in');
+    }
+
+    // Enhanced activity timeline with Chart.js
+    renderActivityTimeline() {
+        try {
+            const canvas = document.getElementById('activity-chart');
+            if (!canvas) return;
+
+            const trends = this.data.weekly_trends || [];
+            
+            // Prepare chart data
+            const labels = trends.map(d => this.formatChartDate(d.date));
+            const matchesData = trends.map(d => d.matches || 0);
+            const scoresData = trends.map(d => d.avg_score || 0);
+
+            // Destroy existing chart
+            if (this.activityChart) {
+                this.activityChart.destroy();
+            }
+
+            // Create new chart
+            this.activityChart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Daily Matches',
+                            data: matchesData,
+                            yAxisID: 'yMatches',
+                            borderColor: '#4299e1',
+                            backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 5,
+                            pointHoverRadius: 8
+                        },
+                        {
+                            label: 'Average Score (%)',
+                            data: scoresData,
+                            yAxisID: 'yScore',
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 5,
+                            pointHoverRadius: 8
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: 'white',
+                            bodyColor: 'white',
+                            borderColor: '#4299e1',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#718096'
+                            }
+                        },
+                        yMatches: {
+                            type: 'linear',
+                            position: 'left',
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(113, 128, 150, 0.1)'
+                            },
+                            ticks: {
+                                color: '#718096',
+                                precision: 0
+                            },
+                            title: {
+                                display: true,
+                                text: 'Number of Matches',
+                                color: '#4a5568'
+                            }
+                        },
+                        yScore: {
+                            type: 'linear',
+                            position: 'right',
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            ticks: {
+                                color: '#718096',
+                                callback: (value) => `${value}%`
+                            },
+                            title: {
+                                display: true,
+                                text: 'Average Score (%)',
+                                color: '#4a5568'
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeInOutCubic'
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error('Failed to render activity timeline:', error);
+            this.showChartError();
+        }
+    }
+
+    // Utility functions
+    withPeriod(baseUrl, params = {}) {
+        const url = new URL(baseUrl, window.location.origin);
+        if (this.currentPeriod !== 'all') {
+            url.searchParams.set('period', this.currentPeriod);
+        }
+        Object.entries(params).forEach(([key, value]) => {
+            url.searchParams.set(key, value);
+        });
+        return url.toString();
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+
+    formatDate(dateString) {
+        if (!dateString) return 'Unknown';
+        try {
+            return new Date(dateString).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        } catch {
+            return dateString;
+        }
+    }
+
+    formatRelativeTime(dateString) {
+        if (!dateString) return 'Unknown';
+        try {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diff = now - date;
+            
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+            
+            if (minutes < 60) return `${minutes}m ago`;
+            if (hours < 24) return `${hours}h ago`;
+            return `${days}d ago`;
+        } catch {
+            return dateString;
+        }
+    }
+
+    formatChartDate(dateString) {
+        if (!dateString) return '';
+        try {
+            return new Date(dateString).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+            });
+        } catch {
+            return dateString;
+        }
+    }
+
+    getEmptyState(message, icon) {
+        return `
+            <div class="loading-state">
+                <div style="text-align: center; padding: 2rem; color: #718096;">
+                    <i class="fas fa-${icon}" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                    <p>${message}</p>
+                </div>
+            </div>
+        `;
+    }
+
+    // Loading and error states
+    showLoading() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) overlay.classList.remove('hidden');
+    }
+
+    hideLoading() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) overlay.classList.add('hidden');
+    }
+
+    showError(message) {
+        const alert = document.getElementById('error-alert');
+        const messageEl = document.getElementById('error-message');
+        
+        if (alert && messageEl) {
+            messageEl.textContent = message;
+            alert.style.display = 'flex';
+        }
+    }
+
+    hideError() {
+        const alert = document.getElementById('error-alert');
+        if (alert) alert.style.display = 'none';
+    }
+
+    // Error handling
+    handleError(message, error) {
+        console.error(message, error);
+        this.showError(`${message}: ${error.message}`);
+        this.hideLoading();
+    }
+
+    handleLoadError(error) {
+        this.retryCount++;
+        
+        if (this.retryCount < this.maxRetries) {
+            console.warn(`Load failed, retrying... (${this.retryCount}/${this.maxRetries})`);
+            setTimeout(() => this.loadInitialData(), 1000 * this.retryCount);
+        } else {
+            this.handleError('Failed to load dashboard data after multiple attempts', error);
+        }
+    }
+
+    // Auto-refresh functionality
+    startAutoRefresh() {
+        this.refreshInterval = setInterval(() => {
+            if (!document.hidden && !this.isLoading) {
+                this.loadInitialData();
+            }
+        }, 300000); // 5 minutes
+    }
+
+    stopAutoRefresh() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+            this.refreshInterval = null;
+        }
+    }
+
+    // Event handlers
+    async refreshAllData() {
+        await this.loadInitialData();
+    }
+
+    async refreshChart() {
+        try {
+            const response = await this.fetchWithTimeout(this.withPeriod(this.endpoints.main));
+            if (response.success) {
+                this.data.weekly_trends = response.weekly_trends || [];
+                this.renderActivityTimeline();
+            }
+        } catch (error) {
+            console.error('Failed to refresh chart:', error);
+        }
+    }
+
+    retryLoad() {
+        this.retryCount = 0;
+        this.hideError();
+        this.loadInitialData();
+    }
+
+    exportData() {
+        try {
+            const dataStr = JSON.stringify(this.data, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `analytics-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Failed to export data:', error);
+            alert('Failed to export data. Please try again.');
+        }
+    }
+
+    viewAllMatches() {
+        window.location.href = '/matches/';
+    }
+
+    viewAllActivity() {
+        window.location.href = '/activity/';
+    }
+
+    handleKeyboardShortcuts(e) {
+        if (e.ctrlKey || e.metaKey) {
+            switch (e.key) {
+                case 'r':
+                    e.preventDefault();
+                    this.refreshAllData();
+                    break;
+                case 'e':
+                    e.preventDefault();
+                    this.exportData();
+                    break;
+            }
+        }
+    }
+
+    handleResize() {
+        if (this.activityChart) {
+            this.activityChart.resize();
+        }
+    }
+
+    handleVisibilityChange() {
+        if (document.hidden) {
+            this.stopAutoRefresh();
+        } else {
+            this.startAutoRefresh();
+        }
+    }
+
+    // Utility functions
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    updatePerformanceMetrics(loadTime) {
+        this.performanceMetrics.loadTimes.push(loadTime);
+        this.performanceMetrics.lastSuccessfulLoad = new Date();
+        
+        // Keep only last 10 load times
+        if (this.performanceMetrics.loadTimes.length > 10) {
+            this.performanceMetrics.loadTimes.shift();
+        }
+    }
+
+    resetRetryCount() {
+        this.retryCount = 0;
+    }
+
+    updateLastUpdated() {
+        const element = document.getElementById('last-updated');
+        if (element) {
+            element.textContent = new Date().toLocaleTimeString();
+        }
+    }
+
+    updateTrendIndicators(stats) {
+        // This would require historical data to calculate trends
+        // For now, we'll use placeholder logic
+        const trends = {
+            jobs: '+5.2%',
+            resumes: '+12.8%',
+            matches: '+8.4%',
+            score: '+2.1%'
+        };
+
+        Object.entries(trends).forEach(([key, value]) => {
+            const element = document.getElementById(`${key}-change`);
+            if (element) {
+                const icon = value.startsWith('+') ? 'fa-arrow-up' : 'fa-arrow-down';
+                const color = value.startsWith('+') ? '#48bb78' : '#f56565';
+                element.innerHTML = `<i class="fas ${icon}"></i> ${value} from last week`;
+                element.style.color = color;
+            }
+        });
+    }
+
+    addAnimations() {
+        // Add staggered animations to cards
+        const cards = document.querySelectorAll('.metric-card, .chart-card, .detail-card, .insight-card');
+        cards.forEach((card, index) => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                card.style.transition = 'all 0.6s ease-out';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+    }
+
+    showChartError() {
+        const container = document.querySelector('#activity-chart').parentElement;
+        container.innerHTML = `
+            <div class="chart-error" style="text-align: center; padding: 2rem; color: #e53e3e;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                <p>Failed to load chart data</p>
+                <button class="btn btn-small" onclick="dashboard.refreshChart()">Retry</button>
+            </div>
+        `;
+    }
+
+    getDefaultStats() {
+        return {
+            total_jobs: 0,
+            total_resumes: 0,
+            total_matches: 0,
+            avg_score: 0,
+            max_score: 0,
+            min_score: 0,
+            success_rate: 0
+        };
+    }
+
+    getDefaultDistribution() {
+        return {
+            '90-100': 0,
+            '80-89': 0,
+            '70-79': 0,
+            '60-69': 0,
+            '<60': 0
+        };
+    }
+
+    // Cleanup method
+    destroy() {
+        this.stopAutoRefresh();
+        if (this.activityChart) {
+            this.activityChart.destroy();
+        }
+        
+        // Remove event listeners
+        document.removeEventListener('keydown', this.handleKeyboardShortcuts);
+        document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+        window.removeEventListener('resize', this.handleResize);
+    }
+
+    // Public API for debugging
+    getPerformanceMetrics() {
+        return {
+            ...this.performanceMetrics,
+            averageLoadTime: this.performanceMetrics.loadTimes.reduce((a, b) => a + b, 0) / this.performanceMetrics.loadTimes.length || 0,
+            isLoading: this.isLoading,
+            retryCount: this.retryCount,
+            currentPeriod: this.currentPeriod
+        };
+    }
+
+    // Health check method
+    async healthCheck() {
+        try {
+            const response = await this.fetchWithTimeout('/api/analytics/health/', 5000);
+            return response.status === 'healthy';
+        } catch {
+            return false;
+        }
+    }
+}
+
+// Initialize dashboard when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Global dashboard instance for debugging
+    window.dashboard = new AnalyticsDashboard();
+    window.dashboard.init().catch(error => {
+        console.error('Failed to initialize dashboard:', error);
+    });
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (window.dashboard) {
+        window.dashboard.destroy();
+    }
+});
+
+// Service Worker registration for offline support (optional)
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(error => {
+        console.log('Service Worker registration failed:', error);
+    });
+}
+
+// Performance monitoring
+window.addEventListener('load', () => {
+    // Log performance metrics
+    if (window.performance && window.performance.timing) {
+        const loadTime = window.performance.timing.loadEventEnd - window.performance.timing.navigationStart;
+        console.log(`Dashboard loaded in ${loadTime}ms`);
+    }
+});
+
+// Error boundary for unhandled errors
+window.addEventListener('error', (event) => {
+    console.error('Global error:', event.error);
+    if (window.dashboard) {
+        window.dashboard.showError('An unexpected error occurred. Please refresh the page.');
+    }
+});
+
+// Promise rejection handler
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason);
+    event.preventDefault();
+    if (window.dashboard) {
+        window.dashboard.showError('A network error occurred. Please check your connection.');
+    }
+});
+</script>
+
+<!-- FontAwesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
 {% endblock %}

@@ -1,315 +1,756 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="job-detail-container">
-  <div class="job-detail-header">
-    <a href="{% url 'job_list' %}" class="back-btn">← Back to Jobs</a>
-    <div class="job-actions">
-      <a href="{% url 'job_edit' job.job_id %}" class="btn-primary">Edit Job</a>
-      <a href="{% url 'job_delete_confirm' job.job_id %}" class="btn-danger">Delete Job</a>
+  <!-- Enhanced container for better layout -->
+  <div class="job-detail-container">
+    
+    <!-- Enhanced main card -->
+    <div class="main-card">
+      
+      <!-- Header with improved buttons -->
+      <div class="job-detail-header">
+        <a href="{% url 'manage_jobs' %}" class="back-btn">
+          <i class="fas fa-arrow-left"></i>
+          Back to Jobs
+        </a>
+        <div class="job-actions">
+          <a href="{% url 'job_edit' job.job_id %}" class="btn btn-edit">
+            <i class="fas fa-edit"></i>
+            Edit Job
+          </a>
+          <a href="{% url 'job_delete_confirm' job.job_id %}" class="btn btn-delete">
+            <i class="fas fa-trash-alt"></i>
+            Delete Job
+          </a>
+        </div>
+      </div>
+
+      <!-- Job content -->
+      <div class="job-content">
+        
+        <!-- Job header section -->
+        <div class="job-header">
+          <h1 class="job-title">{{ job.title }}</h1>
+          <div class="job-meta">
+            <span class="company">
+              <i class="fas fa-building"></i>
+              {{ job.company }}
+            </span>
+            {% if job.location %}
+              <span class="location">
+                <i class="fas fa-map-marker-alt"></i>
+                {{ job.location }}
+              </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Job badges section -->
+        {% if job.contract_type or job.experience_level or job.salary_range %}
+          <div class="job-badges">
+            {% if job.contract_type %}
+              <span class="badge contract-type">
+                <i class="fas fa-briefcase"></i>
+                {{ job.contract_type }}
+              </span>
+            {% endif %}
+            {% if job.experience_level %}
+              <span class="badge experience">
+                <i class="fas fa-chart-line"></i>
+                {{ job.experience_level }}
+              </span>
+            {% endif %}
+            {% if job.salary_range %}
+              <span class="badge salary">
+                <i class="fas fa-dollar-sign"></i>
+                {{ job.salary_range }}
+              </span>
+            {% endif %}
+          </div>
+        {% endif %}
+
+        <!-- Job description -->
+        <div class="content-section job-description">
+          <h3 class="section-title">
+            <i class="fas fa-file-alt"></i>
+            Job Description
+          </h3>
+          <div class="section-content">
+            <p>{{ job.description|linebreaks }}</p>
+          </div>
+        </div>
+
+        <!-- Technologies section -->
+        {% if job.technologies %}
+          <div class="content-section technologies-section">
+            <h3 class="section-title">
+              <i class="fas fa-code"></i>
+              Required Technologies
+            </h3>
+            <div class="section-content">
+              <div class="tech-tags">
+                {% for tech in job.technologies %}
+                  <span class="tech-tag">{{ tech }}</span>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- Programming Languages section -->
+        {% if job.languages %}
+          <div class="content-section languages-section">
+            <h3 class="section-title">
+              <i class="fas fa-laptop-code"></i>
+              Programming Languages
+            </h3>
+            <div class="section-content">
+              <div class="tech-tags">
+                {% for lang in job.languages %}
+                  <span class="tech-tag language-tag">{{ lang }}</span>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- Requirements section -->
+        {% if job.requirements %}
+          <div class="content-section requirements-section">
+            <h3 class="section-title">
+              <i class="fas fa-check-circle"></i>
+              Requirements
+            </h3>
+            <div class="section-content">
+              <ul class="requirements-list">
+                {% for req in job.requirements %}
+                  <li>{{ req }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- Nice to have section -->
+        {% if job.nice_to_have %}
+          <div class="content-section nice-to-have-section">
+            <h3 class="section-title">
+              <i class="fas fa-star"></i>
+              Nice to Have
+            </h3>
+            <div class="section-content">
+              <ul class="nice-to-have-list">
+                {% for item in job.nice_to_have %}
+                  <li>{{ item }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        {% endif %}
+
+        <!-- Job metadata footer -->
+        <div class="job-footer">
+          <div class="job-meta-info">
+            <div class="meta-grid">
+              <div class="meta-item">
+                <i class="fas fa-hashtag"></i>
+                <div>
+                  <strong>Job ID</strong>
+                  <span>{{ job.job_id }}</span>
+                </div>
+              </div>
+              <div class="meta-item">
+                <i class="fas fa-database"></i>
+                <div>
+                  <strong>Database ID</strong>
+                  <span>{{ job.id }}</span>
+                </div>
+              </div>
+              <div class="meta-item">
+                <i class="fas fa-calendar-plus"></i>
+                <div>
+                  <strong>Created</strong>
+                  <span>{{ job.created_at|date:"F d, Y \a\t g:i A" }}</span>
+                </div>
+              </div>
+              {% if job.updated_at %}
+                <div class="meta-item">
+                  <i class="fas fa-calendar-check"></i>
+                  <div>
+                    <strong>Last Updated</strong>
+                    <span>{{ job.updated_at|date:"F d, Y \a\t g:i A" }}</span>
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
 
-  <div class="job-detail-card">
-    <div class="job-header">
-      <h1 class="job-title">{{ job.title }}</h1>
-      <div class="job-meta">
-        <span class="company">{{ job.company }}</span>
-        {% if job.location %}
-          <span class="location">📍 {{ job.location }}</span>
-        {% endif %}
-      </div>
-    </div>
+  <style>
+    /* Base container styles */
+    .job-detail-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
 
-    <div class="job-details-section">
-      {% if job.contract_type or job.experience_level or job.salary_range %}
-        <div class="job-badges">
-          {% if job.contract_type %}
-            <span class="badge contract-type">{{ job.contract_type }}</span>
-          {% endif %}
-          {% if job.experience_level %}
-            <span class="badge experience">{{ job.experience_level }}</span>
-          {% endif %}
-          {% if job.salary_range %}
-            <span class="badge salary">💰 {{ job.salary_range }}</span>
-          {% endif %}
-        </div>
-      {% endif %}
+    /* Enhanced main card */
+    .main-card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      padding: 2.5rem;
+      margin: 1rem 0;
+      border: 1px solid #e2e8f0;
+    }
 
-      <div class="job-description">
-        <h3>Job Description</h3>
-        <p>{{ job.description|linebreaks }}</p>
-      </div>
-
-      {% if job.technologies %}
-        <div class="technologies-section">
-          <h3>Required Technologies</h3>
-          <div class="tech-tags">
-            {% for tech in job.technologies %}
-              <span class="tech-tag">{{ tech }}</span>
-            {% endfor %}
-          </div>
-        </div>
-      {% endif %}
-
-      {% if job.languages %}
-        <div class="languages-section">
-          <h3>Programming Languages</h3>
-          <div class="tech-tags">
-            {% for lang in job.languages %}
-              <span class="tech-tag language-tag">{{ lang }}</span>
-            {% endfor %}
-          </div>
-        </div>
-      {% endif %}
-
-      {% if job.requirements %}
-        <div class="requirements-section">
-          <h3>Requirements</h3>
-          <ul class="requirements-list">
-            {% for req in job.requirements %}
-              <li>{{ req }}</li>
-            {% endfor %}
-          </ul>
-        </div>
-      {% endif %}
-
-      {% if job.nice_to_have %}
-        <div class="nice-to-have-section">
-          <h3>Nice to Have</h3>
-          <ul class="nice-to-have-list">
-            {% for item in job.nice_to_have %}
-              <li>{{ item }}</li>
-            {% endfor %}
-          </ul>
-        </div>
-      {% endif %}
-    </div>
-
-    <div class="job-footer">
-      <div class="job-meta-info">
-        <p><strong>Job ID:</strong> {{ job.job_id }}</p>
-        <p><strong>Database ID:</strong> {{ job.id }}</p>
-        <p><strong>Created:</strong> {{ job.created_at|date:"F d, Y \a\t g:i A" }}</p>
-        {% if job.updated_at %}
-          <p><strong>Last Updated:</strong> {{ job.updated_at|date:"F d, Y \a\t g:i A" }}</p>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-</div>
-
-<style>
-  .job-detail-container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem 1rem;
-  }
-
-  .job-detail-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-
-  .back-btn {
-    color: #007bff;
-    text-decoration: none;
-    font-weight: 500;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-  }
-
-  .back-btn:hover {
-    background-color: #f8f9fa;
-  }
-
-  .job-actions {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .job-detail-card {
-    background: white;
-    border-radius: 8px;
-    padding: 2rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    border: 1px solid #e1e5e9;
-  }
-
-  .job-header {
-    border-bottom: 2px solid #f0f0f0;
-    padding-bottom: 1.5rem;
-    margin-bottom: 2rem;
-  }
-
-  .job-title {
-    margin: 0 0 1rem 0;
-    color: #2c3e50;
-    font-size: 2rem;
-  }
-
-  .job-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    color: #666;
-    font-size: 1.1rem;
-  }
-
-  .company {
-    font-weight: 600;
-    color: #3498db;
-  }
-
-  .job-badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-bottom: 2rem;
-  }
-
-  .badge {
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-weight: 500;
-  }
-
-  .contract-type {
-    background: #e8f5e8;
-    color: #2d5a2d;
-  }
-
-  .experience {
-    background: #fff3cd;
-    color: #856404;
-  }
-
-  .salary {
-    background: #d1ecf1;
-    color: #0c5460;
-  }
-
-  .job-description, .technologies-section, .requirements-section {
-    margin-bottom: 2rem;
-  }
-
-  .job-description h3, .technologies-section h3, .requirements-section h3 {
-    color: #2c3e50;
-    margin-bottom: 1rem;
-    font-size: 1.25rem;
-  }
-
-  .job-description p {
-    line-height: 1.6;
-    color: #555;
-  }
-
-  .tech-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .tech-tag {
-    background: #f8f9fa;
-    color: #495057;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    border: 1px solid #dee2e6;
-  }
-
-  .requirements-list {
-    list-style-type: disc;
-    margin-left: 1.5rem;
-  }
-
-  .language-tag {
-    background: #e3f2fd;
-    color: #1565c0;
-    border: 1px solid #bbdefb;
-  }
-
-  .languages-section, .nice-to-have-section {
-    margin-bottom: 2rem;
-  }
-
-  .languages-section h3, .nice-to-have-section h3 {
-    color: #2c3e50;
-    margin-bottom: 1rem;
-    font-size: 1.25rem;
-  }
-
-  .nice-to-have-list {
-    list-style-type: circle;
-    margin-left: 1.5rem;
-    color: #666;
-  }
-
-  .nice-to-have-list li {
-    margin-bottom: 0.5rem;
-    line-height: 1.5;
-  }
-
-  .job-footer {
-    border-top: 2px solid #f0f0f0;
-    padding-top: 1.5rem;
-    margin-top: 2rem;
-  }
-
-  .job-meta-info p {
-    margin: 0.5rem 0;
-    color: #666;
-  }
-
-  .btn-primary, .btn-danger {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: background-color 0.2s;
-    display: inline-block;
-  }
-
-  .btn-primary {
-    background: #007bff;
-    color: white;
-  }
-
-  .btn-primary:hover {
-    background: #0056b3;
-  }
-
-  .btn-danger {
-    background: #dc3545;
-    color: white;
-  }
-
-  .btn-danger:hover {
-    background: #c82333;
-  }
-
-  @media (max-width: 768px) {
+    /* Header section */
     .job-detail-header {
-      flex-direction: column;
-      align-items: stretch;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 3px solid #f1f5f9;
+      flex-wrap: wrap;
+      gap: 1rem;
     }
-    
+
+    /* Enhanced back button */
+    .back-btn {
+      background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+      color: #4a5568;
+      text-decoration: none;
+      font-weight: 700;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border: 2px solid #e2e8f0;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+      font-size: 0.9rem;
+    }
+
+    .back-btn:hover {
+      background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
+      color: #2d3748;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Enhanced action buttons */
     .job-actions {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 140px;
       justify-content: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
-    
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-edit {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: 2px solid #667eea;
+    }
+
+    .btn-edit:hover {
+      background: linear-gradient(135deg, #5a67d8 0%, #667eea 100%);
+      border-color: #5a67d8;
+    }
+
+    .btn-delete {
+      background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+      color: white;
+      border: 2px solid #dc3545;
+    }
+
+    .btn-delete:hover {
+      background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+      border-color: #c82333;
+    }
+
+    /* Job content */
+    .job-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+
+    /* Job header */
+    .job-header {
+      text-align: center;
+      padding: 2rem;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      border-radius: 20px;
+      border: 2px solid #e2e8f0;
+    }
+
     .job-title {
-      font-size: 1.5rem;
+      margin: 0 0 1.5rem 0;
+      color: #1a202c;
+      font-size: 2.5rem;
+      font-weight: 800;
+      line-height: 1.2;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
-  }
-</style>
+
+    .job-meta {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 2rem;
+      color: #4a5568;
+      font-size: 1.1rem;
+    }
+
+    .job-meta span {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+    }
+
+    .company {
+      color: #667eea;
+    }
+
+    .location {
+      color: #718096;
+    }
+
+    /* Job badges */
+    .job-badges {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .badge {
+      padding: 0.75rem 1.25rem;
+      border-radius: 25px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border: 2px solid transparent;
+    }
+
+    .contract-type {
+      background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%);
+      color: #155724;
+      border-color: #c3e6cb;
+    }
+
+    .experience {
+      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+      color: #856404;
+      border-color: #f1c40f;
+    }
+
+    .salary {
+      background: linear-gradient(135deg, #d1ecf1 0%, #a8dadc 100%);
+      color: #0c5460;
+      border-color: #bee5eb;
+    }
+
+    /* Content sections */
+    .content-section {
+      background: #fafbfc;
+      border-radius: 20px;
+      padding: 2rem;
+      border: 2px solid #e2e8f0;
+    }
+
+    .section-title {
+      color: #2d3748;
+      margin-bottom: 1.5rem;
+      font-size: 1.4rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+
+    .section-title i {
+      color: #667eea;
+      font-size: 1.2rem;
+    }
+
+    .section-content {
+      color: #4a5568;
+      line-height: 1.7;
+    }
+
+    .section-content p {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    /* Tech tags */
+    .tech-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .tech-tag {
+      background: linear-gradient(135deg, #e6f3ff 0%, #cce7ff 100%);
+      color: #0066cc;
+      padding: 0.6rem 1.2rem;
+      border-radius: 25px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      border: 2px solid #b3d9ff;
+      transition: all 0.3s ease;
+    }
+
+    .tech-tag:hover {
+      background: #667eea;
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .language-tag {
+      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+      color: #856404;
+      border-color: #f1c40f;
+    }
+
+    .language-tag:hover {
+      background: #f39c12;
+      color: white;
+      border-color: #e67e22;
+    }
+
+    /* Lists */
+    .requirements-list,
+    .nice-to-have-list {
+      margin: 0;
+      padding-left: 2rem;
+    }
+
+    .requirements-list li,
+    .nice-to-have-list li {
+      margin-bottom: 0.75rem;
+      line-height: 1.6;
+      font-size: 1.05rem;
+    }
+
+    .requirements-list li {
+      list-style-type: disc;
+      color: #2d3748;
+    }
+
+    .nice-to-have-list li {
+      list-style-type: circle;
+      color: #4a5568;
+    }
+
+    /* Job footer */
+    .job-footer {
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      border-radius: 20px;
+      padding: 2rem;
+      border: 2px solid #e2e8f0;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: white;
+      padding: 1rem;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .meta-item i {
+      color: #667eea;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .meta-item div {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .meta-item strong {
+      color: #2d3748;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+
+    .meta-item span {
+      color: #4a5568;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    /* Responsive design */
+    @media (max-width: 1024px) {
+      .main-card {
+        padding: 2rem;
+      }
+
+      .job-title {
+        font-size: 2rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .job-detail-container {
+        padding: 0.5rem;
+      }
+
+      .main-card {
+        padding: 1.5rem;
+        border-radius: 15px;
+      }
+
+      .job-detail-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1.5rem;
+      }
+
+      .job-actions {
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .job-title {
+        font-size: 1.8rem;
+      }
+
+      .job-meta {
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .content-section {
+        padding: 1.5rem;
+      }
+
+      .section-title {
+        font-size: 1.2rem;
+      }
+
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .main-card {
+        padding: 1rem;
+      }
+
+      .job-header {
+        padding: 1.5rem;
+      }
+
+      .job-title {
+        font-size: 1.5rem;
+      }
+
+      .job-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .btn {
+        min-width: auto;
+        width: 100%;
+      }
+
+      .content-section {
+        padding: 1rem;
+      }
+
+      .section-title {
+        font-size: 1.1rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      .tech-tags {
+        gap: 0.5rem;
+      }
+
+      .tech-tag {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+      }
+    }
+
+    /* Focus states for accessibility */
+    .btn:focus,
+    .back-btn:focus {
+      outline: 2px solid #667eea;
+      outline-offset: 2px;
+    }
+
+    /* Smooth transitions */
+    * {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Print styles */
+    @media print {
+      .job-actions,
+      .back-btn {
+        display: none;
+      }
+
+      .main-card {
+        box-shadow: none;
+        border: 1px solid #000;
+      }
+    }
+  </style>
+
+  <script>
+    // Enhanced job detail functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      // Add smooth scroll behavior
+      document.documentElement.style.scrollBehavior = 'smooth';
+      
+      // Add entrance animation
+      const mainCard = document.querySelector('.main-card');
+      mainCard.style.opacity = '0';
+      mainCard.style.transform = 'translateY(30px)';
+      
+      setTimeout(() => {
+        mainCard.style.opacity = '1';
+        mainCard.style.transform = 'translateY(0)';
+      }, 100);
+
+      // Add staggered animations to content sections
+      const sections = document.querySelectorAll('.content-section');
+      sections.forEach((section, index) => {
+        section.style.opacity = '0';
+        section.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+          section.style.opacity = '1';
+          section.style.transform = 'translateY(0)';
+        }, 200 + (index * 100));
+      });
+    });
+
+    // Enhanced delete confirmation
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('.btn-delete')) {
+        e.preventDefault();
+        const link = e.target.closest('.btn-delete');
+        const jobTitle = document.querySelector('.job-title').textContent;
+        
+        if (confirm(`Are you sure you want to delete "${jobTitle}"?\n\nThis action cannot be undone.`)) {
+          // Add loading state
+          link.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+          link.style.pointerEvents = 'none';
+          
+          // Simulate deletion (replace with actual logic)
+          setTimeout(() => {
+            window.location.href = link.href;
+          }, 1000);
+        }
+      }
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', function(e) {
+      // ESC to go back
+      if (e.key === 'Escape') {
+        const backBtn = document.querySelector('.back-btn');
+        if (backBtn) {
+          window.location.href = backBtn.href;
+        }
+      }
+      
+      // E to edit
+      if (e.key.toLowerCase() === 'e' && e.ctrlKey) {
+        e.preventDefault();
+        const editBtn = document.querySelector('.btn-edit');
+        if (editBtn) {
+          window.location.href = editBtn.href;
+        }
+      }
+    });
+
+    // Add tooltips
+    document.querySelectorAll('[title]').forEach(element => {
+      element.addEventListener('mouseenter', function() {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip';
+        tooltip.textContent = this.getAttribute('title');
+        document.body.appendChild(tooltip);
+        
+        const rect = this.getBoundingClientRect();
+        tooltip.style.position = 'absolute';
+        tooltip.style.top = (rect.top - 35) + 'px';
+        tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+        tooltip.style.transform = 'translateX(-50%)';
+        tooltip.style.background = '#333';
+        tooltip.style.color = 'white';
+        tooltip.style.padding = '5px 10px';
+        tooltip.style.borderRadius = '4px';
+        tooltip.style.fontSize = '12px';
+        tooltip.style.zIndex = '1000';
+      });
+      
+      element.addEventListener('mouseleave', function() {
+        const tooltip = document.querySelector('.tooltip');
+        if (tooltip) {
+          tooltip.remove();
+        }
+      });
+    });
+  </script>
 {% endblock %}

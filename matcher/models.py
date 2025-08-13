@@ -28,6 +28,7 @@ class JobOffer(models.Model):
         pass
 
 class CV(models.Model):
+    id = models.CharField(max_length=255, primary_key=True)  # Add this if needed
     cv_id = models.CharField(max_length=255, unique=True)
     name = models.CharField(max_length=255)
     email = models.EmailField(blank=True)
@@ -77,3 +78,5 @@ class HRUser(models.Model):
 
     def upload_job_offer(self):
         pass
+
+

@@ -1,0 +1,536 @@
+<!-- templates/embedding_dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .header h1 {
+            color: #2d3748;
+            margin: 0;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .status-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+        .status-card h3 {
+            color: #2d3748;
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+        }
+        .status-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        .capability-level {
+            padding: 10px 15px;
+            border-radius: 25px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .capability-optimal { background: #d1fae5; color: #065f46; }
+        .capability-good { background: #fef3c7; color: #92400e; }
+        .capability-basic { background: #fed7aa; color: #9a3412; }
+        .capability-emergency { background: #fee2e2; color: #dc2626; }
+        .capability-unknown { background: #f3f4f6; color: #374151; }
+        
+        .method-distribution {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+            border: 2px solid #e2e8f0;
+        }
+        .method-bar {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            padding: 10px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+        .method-name {
+            min-width: 120px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        .progress-bar {
+            flex: 1;
+            height: 20px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            margin: 0 15px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+        .progress-distilbert { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .progress-tfidf { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .progress-simpleword { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+        .progress-random { background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); }
+        
+        .method-percentage {
+            min-width: 60px;
+            text-align: right;
+            font-weight: bold;
+            color: #4b5563;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .recent-activity {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+            border: 2px solid #e2e8f0;
+        }
+        .activity-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 8px 0;
+            background: #f8fafc;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        .timestamp {
+            color: #6b7280;
+        }
+        .method-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .badge-distilbert { background: #d1fae5; color: #065f46; }
+        .badge-tfidf { background: #fef3c7; color: #92400e; }
+        .badge-simpleword { background: #fed7aa; color: #9a3412; }
+        .badge-random { background: #fee2e2; color: #dc2626; }
+        
+        .recommendations {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+            border: 2px solid #e2e8f0;
+        }
+        .recommendation {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+        .rec-critical { background: #fee2e2; border-left: 4px solid #dc2626; }
+        .rec-warning { background: #fef3c7; border-left: 4px solid #f59e0b; }
+        .rec-info { background: #dbeafe; border-left: 4px solid #3b82f6; }
+        .rec-success { background: #d1fae5; border-left: 4px solid #10b981; }
+        
+        .error-state {
+            background: #fee2e2;
+            border: 2px solid #fca5a5;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            color: #dc2626;
+        }
+        
+        @media (max-width: 768px) {
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+            .controls {
+                flex-direction: column;
+            }
+            .method-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .progress-bar {
+                width: 100%;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% if error %}
+            <div class="error-state">
+                <h2>⚠️ Error Loading Embedding Status</h2>
+                <p>{{ error }}</p>
+                <button class="btn btn-primary" onclick="location.reload()">
+                    🔄 Retry
+                </button>
+            </div>
+        {% else %}
+            <div class="header">
+                <h1>🔍 Embedding Method Monitor</h1>
+                <p>Real-time monitoring of AI embedding methods in your resume matching system</p>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Loading embedding status...</p>
+            </div>
+
+            <div id="dashboard-content">
+                <div class="status-grid">
+                    <div class="status-card">
+                        <h3>📊 Total Embedding Calls</h3>
+                        <div class="status-value" id="total-calls">{{ status.total_embedding_calls|default:"0" }}</div>
+                        <p>Since session start</p>
+                    </div>
+                    
+                    <div class="status-card">
+                        <h3>⚡ Last Method Used</h3>
+                        <div class="status-value" id="last-method">{{ status.last_method_used|default:"None" }}</div>
+                        <p>Most recent embedding generation</p>
+                    </div>
+                    
+                    <div class="status-card">
+                        <h3>👑 Primary Method</h3>
+                        <div class="status-value" id="primary-method">{{ status.primary_method|default:"None" }}</div>
+                        <p>Most frequently used method</p>
+                    </div>
+                    
+                    <div class="status-card">
+                        <h3>🎯 System Capability</h3>
+                        <div class="capability-level" id="capability-level">
+                            {{ status.current_capability_level|default:"⚪ UNKNOWN" }}
+                        </div>
+                        <p>Current performance level</p>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-primary" onclick="refreshStatus()">
+                        🔄 Refresh Status
+                    </button>
+                    <button class="btn btn-secondary" onclick="runDiagnostics()">
+                        🔬 Run Diagnostics
+                    </button>
+                    <button class="btn btn-success" onclick="testEmbeddings()">
+                        🧪 Test Embeddings
+                    </button>
+                    <a href="/api/embedding/report/" class="btn btn-secondary" target="_blank">
+                        📄 Full Report
+                    </a>
+                </div>
+
+                <div class="method-distribution">
+                    <h3>📈 Method Usage Distribution</h3>
+                    <div id="method-bars">
+                        <!-- Method bars will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="recent-activity">
+                    <h3>🔧 Recent Activity</h3>
+                    <div id="recent-activity-list">
+                        <p>No recent activity data available. Run some matching operations to see activity.</p>
+                    </div>
+                </div>
+
+                <div class="recommendations" id="recommendations">
+                    <h3>💡 Recommendations</h3>
+                    <div id="recommendations-list">
+                        <!-- Recommendations will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        let currentStatus = null;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshStatus();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(refreshStatus, 30000);
+        });
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('dashboard-content').style.opacity = '0.5';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard-content').style.opacity = '1';
+        }
+
+        async function refreshStatus() {
+            try {
+                showLoading();
+                
+                const response = await fetch('/api/embedding/status/');
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentStatus = data.status;
+                    updateDashboard(data.status);
+                    updateRecommendations(data.status.recommendations || []);
+                } else {
+                    console.error('Failed to fetch status:', data.error);
+                }
+            } catch (error) {
+                console.error('Error fetching status:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function runDiagnostics() {
+            try {
+                showLoading();
+                
+                const response = await fetch('/api/embedding/diagnostics/');
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Diagnostics completed! Check console for details.');
+                    console.log('Diagnostics Results:', data.diagnostics);
+                    refreshStatus(); // Refresh to show updated status
+                } else {
+                    alert('Diagnostics failed: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error running diagnostics: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function testEmbeddings() {
+            try {
+                showLoading();
+                
+                // Call the matching API with test data
+                const testData = {
+                    job_id: 'test-job-123',
+                    resume_ids: ['test-resume-456']
+                };
+                
+                const response = await fetch('/api/match-resumes/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                if (response.ok) {
+                    alert('Embedding test completed! Check the method distribution for updates.');
+                    refreshStatus(); // Refresh to show updated status
+                } else {
+                    alert('Embedding test failed. This is normal if you don\'t have test data set up.');
+                }
+            } catch (error) {
+                alert('Error testing embeddings: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function updateDashboard(status) {
+            // Update main metrics
+            document.getElementById('total-calls').textContent = status.total_embedding_calls || '0';
+            document.getElementById('last-method').textContent = status.last_method_used || 'None';
+            document.getElementById('primary-method').textContent = status.primary_method || 'None';
+            
+            // Update capability level with appropriate styling
+            const capabilityElement = document.getElementById('capability-level');
+            capabilityElement.textContent = status.current_capability_level || '⚪ UNKNOWN';
+            
+            // Apply capability styling
+            capabilityElement.className = 'capability-level';
+            if (status.current_capability_level) {
+                if (status.current_capability_level.includes('OPTIMAL')) {
+                    capabilityElement.classList.add('capability-optimal');
+                } else if (status.current_capability_level.includes('GOOD')) {
+                    capabilityElement.classList.add('capability-good');
+                } else if (status.current_capability_level.includes('BASIC')) {
+                    capabilityElement.classList.add('capability-basic');
+                } else if (status.current_capability_level.includes('EMERGENCY')) {
+                    capabilityElement.classList.add('capability-emergency');
+                } else {
+                    capabilityElement.classList.add('capability-unknown');
+                }
+            }
+
+            // Update method distribution
+            updateMethodBars(status.method_percentages || {});
+        }
+
+        function updateMethodBars(percentages) {
+            const container = document.getElementById('method-bars');
+            container.innerHTML = '';
+
+            const methods = [
+                { name: 'DistilBERT', key: 'DistilBERT', class: 'distilbert' },
+                { name: 'TF-IDF', key: 'TF-IDF', class: 'tfidf' },
+                { name: 'SimpleWord', key: 'SimpleWord', class: 'simpleword' },
+                { name: 'Random', key: 'Random', class: 'random' }
+            ];
+
+            methods.forEach(method => {
+                const percentage = percentages[method.key] || 0;
+                
+                const barHtml = `
+                    <div class="method-bar">
+                        <div class="method-name">${method.name}</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill progress-${method.class}" 
+                                 style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="method-percentage">${percentage.toFixed(1)}%</div>
+                    </div>
+                `;
+                
+                container.insertAdjacentHTML('beforeend', barHtml);
+            });
+        }
+
+        function updateRecommendations(recommendations) {
+            const container = document.getElementById('recommendations-list');
+            
+            if (!recommendations || recommendations.length === 0) {
+                container.innerHTML = '<p>No specific recommendations at this time.</p>';
+                return;
+            }
+
+            container.innerHTML = '';
+            
+            recommendations.forEach(rec => {
+                const recHtml = `
+                    <div class="recommendation rec-${rec.level}">
+                        <div>
+                            <strong>${rec.message}</strong>
+                            <br>
+                            <code>${rec.action}</code>
+                        </div>
+                    </div>
+                `;
+                
+                container.insertAdjacentHTML('beforeend', recHtml);
+            });
+        }
+
+        // CSRF token helper
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>

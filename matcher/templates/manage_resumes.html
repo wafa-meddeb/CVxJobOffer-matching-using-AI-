@@ -1,0 +1,1332 @@
+{% extends "base.html" %}
+{% block content %}
+  <!-- Full-width container for better layout -->
+  <div class="resume-management-container">
+    
+    <!-- Enhanced main card with better sizing -->
+    <div class="main-card">
+      
+      <!-- Header section -->
+      <div class="page-header">
+        <h2 class="page-title">Resume Management</h2>
+        <div class="page-stats">
+          {% if resumes %}
+            <span class="stat-badge">{{ total_resumes }} Total Resume{{ total_resumes|pluralize }}</span>
+            {% if search_query or date_filter or experience_filter or education_filter %}
+              <span class="stat-badge filtered">{{ filtered_count|default:resumes.count }} Filtered</span>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
+      
+      <!-- Enhanced Search and Filter Section -->
+      <div class="filter-section">
+        <form id="filterForm" method="GET" class="filter-form">
+          <div class="filter-row">
+            <!-- Search Bar -->
+            <div class="search-container">
+              <input type="text" 
+                     id="searchInput" 
+                     name="search" 
+                     placeholder="Search by name, skills, or keywords..." 
+                     value="{{ search_query }}"
+                     class="search-input">
+              <span class="search-icon">🔍</span>
+            </div>
+            
+            <!-- Date Filter -->
+            <div class="filter-group">
+              <label for="dateFilter">Upload Date</label>
+              <select name="date_filter" id="dateFilter" class="filter-select">
+                <option value="">All dates</option>
+                <option value="today" {% if date_filter == 'today' %}selected{% endif %}>Today</option>
+                <option value="this_week" {% if date_filter == 'this_week' %}selected{% endif %}>This Week</option>
+                <option value="this_month" {% if date_filter == 'this_month' %}selected{% endif %}>This Month</option>
+                <option value="last_3_months" {% if date_filter == 'last_3_months' %}selected{% endif %}>Last 3 Months</option>
+              </select>
+            </div>
+            
+            <!-- Experience Filter -->
+            <div class="filter-group">
+              <label for="experienceFilter">Experience Level</label>
+              <select name="experience_filter" id="experienceFilter" class="filter-select">
+                <option value="">All levels</option>
+                <option value="0-1" {% if experience_filter == '0-1' %}selected{% endif %}>Entry Level (0-1 years)</option>
+                <option value="2-5" {% if experience_filter == '2-5' %}selected{% endif %}>Mid Level (2-5 years)</option>
+                <option value="6-10" {% if experience_filter == '6-10' %}selected{% endif %}>Senior Level (6-10 years)</option>
+                <option value="10+" {% if experience_filter == '10+' %}selected{% endif %}>Expert Level (10+ years)</option>
+              </select>
+            </div>
+            
+            <!-- Education Filter -->
+            <div class="filter-group">
+              <label for="educationFilter">Education Level</label>
+              <select name="education_filter" id="educationFilter" class="filter-select">
+                <option value="">All education</option>
+                <option value="high_school" {% if education_filter == 'high_school' %}selected{% endif %}>High School</option>
+                <option value="associate" {% if education_filter == 'associate' %}selected{% endif %}>Associate Degree</option>
+                <option value="bachelor" {% if education_filter == 'bachelor' %}selected{% endif %}>Bachelor's Degree</option>
+                <option value="master" {% if education_filter == 'master' %}selected{% endif %}>Master's Degree</option>
+                <option value="phd" {% if education_filter == 'phd' %}selected{% endif %}>PhD/Doctorate</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="filter-actions">
+            <button type="submit" class="btn-filter">
+              <i class="fas fa-filter"></i>
+              Apply Filters
+            </button>
+            <a href="{% url 'manage_resumes' %}" class="btn-clear">
+              <i class="fas fa-times"></i>
+              Clear All
+            </a>
+            <div class="results-info">
+              {% if resumes %}
+                Showing {{ filtered_count|default:resumes.count }} of {{ total_resumes }} resumes
+              {% else %}
+                No resumes found
+              {% endif %}
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Loading Spinner -->
+      <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+        <p>Filtering resumes...</p>
+      </div>
+    
+      <!-- Content Area -->
+      {% if resumes %}
+      <div class="content-area" id="resumeResults">
+        <div class="resume-cards-container">
+          {% for resume in resumes %}
+          <div class="resume-card">
+            <div class="resume-card-header">
+              <h3 class="candidate-name">{{ resume.name }}</h3>
+              <div class="upload-date">{{ resume.uploaded_at|date:"M d, Y" }}</div>
+            </div>
+            
+            <div class="resume-card-body">
+              <div class="contact-info">
+                {% if resume.email %}
+                <div class="contact-item">
+                  <span class="contact-label">📧</span>
+                  <span class="contact-value">{{ resume.email }}</span>
+                </div>
+                {% endif %}
+                
+                {% if resume.phone %}
+                <div class="contact-item">
+                  <span class="contact-label">📱</span>
+                  <span class="contact-value">{{ resume.phone }}</span>
+                </div>
+                {% endif %}
+              </div>
+
+              {% if resume.summary %}
+              <div class="summary-section">
+                <h4>Summary</h4>
+                <p class="summary-text">{{ resume.summary|truncatechars:150 }}</p>
+              </div>
+              {% endif %}
+
+              {% if resume.skills %}
+              <div class="skills-section">
+                <h4>Skills</h4>
+                <div class="skills-tags">
+                  {% for skill in resume.skills %}
+                    {% if forloop.counter <= 8 %}
+                    <span class="skill-tag">{{ skill }}</span>
+                    {% endif %}
+                  {% endfor %}
+                  {% if resume.skills|length > 8 %}
+                    <span class="skill-tag more-skills">+{{ resume.skills|length|add:"-8" }} more</span>
+                  {% endif %}
+                </div>
+              </div>
+              {% endif %}
+
+              <div class="experience-education-row">
+                {% if resume.experience %}
+                <div class="experience-section">
+                  <h4>Experience</h4>
+                  <div class="experience-count">
+                    <span class="count-number">{{ resume.experience|length }}</span>
+                    <span class="count-label">position{{ resume.experience|length|pluralize }}</span>
+                  </div>
+                  {% for exp in resume.experience %}
+                    {% if forloop.counter <= 2 %}
+                    <div class="experience-item">
+                      <div class="exp-title">{{ exp.title|default:"Position" }}</div>
+                      <div class="exp-company">{{ exp.company|default:"Company" }}</div>
+                      {% if exp.years %}
+                      <div class="exp-years">{{ exp.years }}</div>
+                      {% endif %}
+                    </div>
+                    {% endif %}
+                  {% endfor %}
+                  {% if resume.experience|length > 2 %}
+                  <div class="more-items">+{{ resume.experience|length|add:"-2" }} more positions</div>
+                  {% endif %}
+                </div>
+                {% endif %}
+
+                {% if resume.education %}
+                <div class="education-section">
+                  <h4>Education</h4>
+                  <div class="education-count">
+                    <span class="count-number">{{ resume.education|length }}</span>
+                    <span class="count-label">qualification{{ resume.education|length|pluralize }}</span>
+                  </div>
+                  {% for edu in resume.education %}
+                    {% if forloop.counter <= 2 %}
+                    <div class="education-item">
+                      <div class="edu-degree">{{ edu.degree|default:"Degree" }}</div>
+                      <div class="edu-school">{{ edu.school|default:"Institution" }}</div>
+                      {% if edu.years %}
+                      <div class="edu-years">{{ edu.years }}</div>
+                      {% endif %}
+                    </div>
+                    {% endif %}
+                  {% endfor %}
+                  {% if resume.education|length > 2 %}
+                  <div class="more-items">+{{ resume.education|length|add:"-2" }} more qualifications</div>
+                  {% endif %}
+                </div>
+                {% endif %}
+              </div>
+
+              {% if resume.languages %}
+              <div class="languages-section">
+                <h4>Languages</h4>
+                <div class="languages-list">
+                  {% for language in resume.languages %}
+                    {% if forloop.counter <= 4 %}
+                    <span class="language-item">{{ language }}</span>
+                    {% endif %}
+                  {% endfor %}
+                  {% if resume.languages|length > 4 %}
+                    <span class="language-item more-languages">+{{ resume.languages|length|add:"-4" }} more</span>
+                  {% endif %}
+                </div>
+              </div>
+              {% endif %}
+
+              {% if resume.certificates %}
+              <div class="certificates-section">
+                <h4>Certificates</h4>
+                <div class="certificates-count">{{ resume.certificates|length }} certificate{{ resume.certificates|length|pluralize }}</div>
+              </div>
+              {% endif %}
+            </div>
+            
+            <div class="resume-card-footer">
+              <div class="cv-id">ID: {{ resume.cv_id|slice:":8" }}...</div>
+              <div class="card-actions">
+                <a href="{% url 'resume_detail' resume.cv_id %}" class="btn-small btn-outline">
+                  <i class="fas fa-eye"></i>
+                  View Details
+                </a>
+                <a href="{% url 'resume_delete_confirm' resume.cv_id %}" class="btn-small btn-danger">
+                  <i class="fas fa-trash"></i>
+                  Delete
+                </a>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        
+        <!-- Pagination -->
+        {% if page_obj %}
+        <div class="pagination-section">
+          <div class="pagination">
+            {% if page_obj.has_previous %}
+              <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page=1" class="page-link">
+                <i class="fas fa-angle-double-left"></i>
+                First
+              </a>
+              <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}" class="page-link">
+                <i class="fas fa-angle-left"></i>
+                Previous
+              </a>
+            {% endif %}
+            
+            <span class="page-info">
+              Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+            
+            {% if page_obj.has_next %}
+              <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}" class="page-link">
+                Next
+                <i class="fas fa-angle-right"></i>
+              </a>
+              <a href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.paginator.num_pages }}" class="page-link">
+                Last
+                <i class="fas fa-angle-double-right"></i>
+              </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">
+          <i class="fas fa-file-pdf"></i>
+        </div>
+        <h2>No Resumes Found</h2>
+        <p>
+          {% if search_query or date_filter or experience_filter or education_filter %}
+            No resumes match your current filters. Try adjusting your filters or <a href="{% url 'manage_resumes' %}">clear all filters</a>
+          {% else %}
+            Upload PDF resumes to begin the matching process
+          {% endif %}
+        </p>
+        {% if not search_query and not date_filter and not experience_filter and not education_filter %}
+        <a href="{% url 'upload_resumes' %}" class="btn-primary">
+          <i class="fas fa-upload"></i>
+          Upload Resumes
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+  <style>
+    /* Override base container styles for full-width layout */
+    .resume-management-container {
+      max-width: none;
+      width: 100%;
+      padding: 0 1rem;
+      margin: 0 auto;
+    }
+
+    /* Enhanced main card */
+    .main-card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      padding: 2.5rem;
+      margin: 1rem 0;
+      min-height: 80vh;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* Page header */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 3px solid #f1f5f9;
+    }
+
+    .page-title {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: #1a202c;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .page-stats {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .stat-badge {
+      background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+      color: #4a5568;
+      padding: 0.5rem 1rem;
+      border-radius: 25px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: 2px solid #e2e8f0;
+    }
+
+    .stat-badge.filtered {
+      background: linear-gradient(135deg, #e6f3ff 0%, #cce7ff 100%);
+      color: #0066cc;
+      border-color: #b3d9ff;
+    }
+
+    /* Enhanced Filter Section */
+    .filter-section {
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      border: 2px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 2.5rem;
+      margin-bottom: 2.5rem;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    }
+
+    .filter-form {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .filter-row {
+      display: grid;
+      grid-template-columns: 2.5fr 1fr 1fr 1fr;
+      gap: 2rem;
+      align-items: end;
+    }
+
+    .search-container {
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 1rem 1.25rem 1rem 3rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 15px;
+      font-size: 1.1rem;
+      background: white;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #718096;
+      font-size: 1.2rem;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .filter-group label {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #4a5568;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .filter-select {
+      padding: 1rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 15px;
+      font-size: 1rem;
+      background: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .filter-actions {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      padding-top: 2rem;
+      border-top: 2px solid #e2e8f0;
+    }
+
+    .btn-filter {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 1rem 2rem;
+      border-radius: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.9rem;
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-filter:hover {
+      background: linear-gradient(135deg, #5a67d8 0%, #667eea 100%);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-clear {
+      background: transparent;
+      color: #718096;
+      border: 2px solid #e2e8f0;
+      padding: 1rem 2rem;
+      border-radius: 15px;
+      text-decoration: none;
+      font-weight: 700;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-clear:hover {
+      background: #f7fafc;
+      color: #4a5568;
+      border-color: #cbd5e0;
+      transform: translateY(-2px);
+    }
+
+    .results-info {
+      margin-left: auto;
+      font-size: 1rem;
+      color: #718096;
+      font-weight: 600;
+      background: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      border: 2px solid #e2e8f0;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Content area */
+    .content-area {
+      margin-top: 2rem;
+    }
+
+    /* Loading spinner */
+    .loading-spinner {
+      text-align: center;
+      padding: 3rem;
+      color: #718096;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1.5rem;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Resume cards container */
+    .resume-cards-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 2.5rem;
+      padding: 1rem 0;
+    }
+    
+    /* Individual resume cards */
+    .resume-card {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      height: fit-content;
+      min-height: 520px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .resume-card:hover {
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+      transform: translateY(-5px);
+      border-color: #667eea;
+    }
+
+    .resume-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 2px solid #f1f5f9;
+    }
+
+    .candidate-name {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #1a202c;
+      margin: 0;
+      flex: 1;
+      line-height: 1.3;
+    }
+
+    .upload-date {
+      font-size: 0.85rem;
+      color: #718096;
+      background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+      padding: 0.5rem 1rem;
+      border-radius: 25px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .resume-card-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .contact-info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: #f8fafc;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .contact-label {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .contact-value {
+      font-size: 0.95rem;
+      color: #4a5568;
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    /* Section styling */
+    .summary-section,
+    .skills-section,
+    .languages-section,
+    .certificates-section {
+      background: #fafbfc;
+      padding: 1.25rem;
+      border-radius: 15px;
+      border-left: 4px solid #667eea;
+    }
+
+    .summary-section h4,
+    .skills-section h4,
+    .languages-section h4,
+    .certificates-section h4,
+    .experience-section h4,
+    .education-section h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #2d3748;
+      margin: 0 0 1rem 0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .summary-text {
+      font-size: 0.95rem;
+      color: #718096;
+      line-height: 1.7;
+      margin: 0;
+    }
+
+    .skills-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .skill-tag {
+      background: linear-gradient(135deg, #e6f3ff 0%, #cce7ff 100%);
+      color: #0066cc;
+      padding: 0.5rem 1rem;
+      border-radius: 25px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border: 2px solid #b3d9ff;
+    }
+
+    .skill-tag.more-skills {
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      color: #64748b;
+      border-color: #cbd5e0;
+    }
+
+    /* Experience and Education Grid */
+    .experience-education-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      background: #f8fafc;
+      padding: 1.5rem;
+      border-radius: 15px;
+      border: 2px solid #e2e8f0;
+    }
+
+    .experience-section,
+    .education-section {
+      min-height: 0;
+    }
+
+    .experience-count,
+    .education-count {
+      margin-bottom: 1.25rem;
+      text-align: center;
+      background: white;
+      padding: 1rem;
+      border-radius: 12px;
+      border: 2px solid #e2e8f0;
+    }
+
+    .count-number {
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: #28a745;
+      display: block;
+      line-height: 1;
+    }
+
+    .count-label {
+      font-size: 0.8rem;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+    }
+
+    .experience-item,
+    .education-item {
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: white;
+      border-radius: 10px;
+      border: 2px solid #e2e8f0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .exp-title,
+    .edu-degree {
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: #2d3748;
+      margin-bottom: 0.5rem;
+      line-height: 1.4;
+    }
+
+    .exp-company,
+    .edu-school {
+      font-size: 0.85rem;
+      color: #718096;
+      margin-bottom: 0.4rem;
+      font-weight: 600;
+    }
+
+    .exp-years,
+    .edu-years {
+      font-size: 0.8rem;
+      color: #a0aec0;
+      font-weight: 700;
+    }
+
+    .more-items {
+      font-size: 0.85rem;
+      color: #718096;
+      font-style: italic;
+      text-align: center;
+      padding: 0.75rem;
+      background: #edf2f7;
+      border-radius: 8px;
+    }
+
+    .languages-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .language-item {
+      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+      color: #856404;
+      padding: 0.5rem 1rem;
+      border-radius: 25px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border: 2px solid #f1c40f;
+    }
+
+    .language-item.more-languages {
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      color: #64748b;
+      border-color: #cbd5e0;
+    }
+
+    .certificates-count {
+      background: linear-gradient(135deg, #d1ecf1 0%, #a8dadc 100%);
+      color: #0c5460;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 800;
+      text-align: center;
+      border: 2px solid #bee5eb;
+    }
+
+    .resume-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: auto;
+      padding-top: 2rem;
+      border-top: 2px solid #f1f5f9;
+    }
+
+    .cv-id {
+      font-size: 0.8rem;
+      color: #a0aec0;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+      background: #f7fafc;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-weight: 700;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .btn-small {
+      padding: 0.75rem 1.25rem;
+      font-size: 0.85rem;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: #4a5568;
+      border: 2px solid #e2e8f0;
+    }
+
+    .btn-outline:hover {
+      background: #f7fafc;
+      color: #2d3748;
+      border-color: #cbd5e0;
+      transform: translateY(-2px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: 2px solid #667eea;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #5a67d8 0%, #667eea 100%);
+      border-color: #5a67d8;
+      transform: translateY(-2px);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+      color: white;
+      border: 2px solid #dc3545;
+    }
+    
+    .btn-danger:hover {
+      background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+      border-color: #bd2130;
+      transform: translateY(-2px);
+    }
+
+    /* Pagination styles */
+    .pagination-section {
+      margin-top: 4rem;
+      padding-top: 2.5rem;
+      border-top: 3px solid #e2e8f0;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .page-link {
+      padding: 0.75rem 1.5rem;
+      background: white;
+      color: #4a5568;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .page-link:hover {
+      background: #f7fafc;
+      color: #667eea;
+      border-color: #667eea;
+      transform: translateY(-2px);
+    }
+
+    .page-info {
+      padding: 0.75rem 1.5rem;
+      color: #718096;
+      font-weight: 700;
+      background: #f8fafc;
+      border-radius: 12px;
+      border: 2px solid #e2e8f0;
+    }
+
+    /* Empty state styles */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #718096;
+      background: #fafbfc;
+      border-radius: 20px;
+      border: 2px solid #e2e8f0;
+    }
+
+    .empty-icon {
+      font-size: 4rem;
+      color: #cbd5e0;
+      margin-bottom: 2rem;
+    }
+
+    .empty-state h2 {
+      color: #2d3748;
+      margin-bottom: 1.5rem;
+      font-size: 2rem;
+      font-weight: 800;
+    }
+
+    .empty-state p {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+
+    .empty-state a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .empty-state a:hover {
+      text-decoration: underline;
+    }
+
+    /* Enhanced responsive design */
+    @media (max-width: 1400px) {
+      .main-card {
+        padding: 2rem;
+      }
+      
+      .filter-section {
+        padding: 2rem;
+      }
+    }
+
+    @media (max-width: 1200px) {
+      .resume-cards-container {
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 2rem;
+      }
+      
+      .filter-row {
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 1.5rem;
+      }
+      
+      .search-container {
+        grid-column: 1 / -1;
+      }
+      
+      .page-title {
+        font-size: 2rem;
+      }
+    }
+
+    @media (max-width: 968px) {
+      .resume-management-container {
+        padding: 0 0.5rem;
+      }
+      
+      .main-card {
+        padding: 1.5rem;
+        border-radius: 15px;
+      }
+      
+      .filter-section {
+        padding: 1.5rem;
+        border-radius: 15px;
+      }
+      
+      .resume-cards-container {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+      
+      .resume-card {
+        padding: 1.5rem;
+        min-height: auto;
+      }
+      
+      .experience-education-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+      
+      .resume-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+      
+      .upload-date {
+        align-self: flex-end;
+      }
+      
+      .resume-card-footer {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+      }
+
+      .card-actions {
+        justify-content: center;
+      }
+
+      .contact-info {
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      
+      .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+      
+      .page-stats {
+        align-self: flex-end;
+      }
+      
+      .filter-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+      
+      .filter-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+      }
+      
+      .results-info {
+        margin-left: 0;
+        text-align: center;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .main-card {
+        padding: 1rem;
+      }
+      
+      .filter-section {
+        padding: 1rem;
+      }
+      
+      .resume-card {
+        margin: 0;
+        padding: 1rem;
+      }
+
+      .candidate-name {
+        font-size: 1.3rem;
+      }
+      
+      .page-title {
+        font-size: 1.8rem;
+      }
+
+      .skills-tags,
+      .languages-list {
+        gap: 0.5rem;
+      }
+
+      .skill-tag,
+      .language-item {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+      }
+      
+      .pagination {
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+      
+      .page-link {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+      }
+    }
+
+    /* Grid alignment improvements */
+    .resume-cards-container::after {
+      content: '';
+      flex: auto;
+    }
+
+    /* Ensure equal height cards in each row */
+    .resume-card {
+      align-self: stretch;
+    }
+
+    /* Custom scrollbar for better aesthetics */
+    .resume-card-body::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .resume-card-body::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 3px;
+    }
+
+    .resume-card-body::-webkit-scrollbar-thumb {
+      background: #cbd5e0;
+      border-radius: 3px;
+    }
+
+    .resume-card-body::-webkit-scrollbar-thumb:hover {
+      background: #a0aec0;
+    }
+
+    /* Smooth transitions for all interactive elements */
+    * {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Focus states for accessibility */
+    .btn-small:focus,
+    .page-link:focus,
+    .search-input:focus,
+    .filter-select:focus {
+      outline: 2px solid #667eea;
+      outline-offset: 2px;
+    }
+
+    /* Print styles */
+    @media print {
+      .filter-section,
+      .pagination-section,
+      .card-actions {
+        display: none;
+      }
+      
+      .resume-card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #000;
+      }
+    }
+  </style>
+  
+  <script>
+    // Enhanced search functionality with debouncing
+    let searchTimeout;
+    const searchInput = document.getElementById('searchInput');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const resumeResults = document.getElementById('resumeResults');
+    
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          showLoading();
+          document.getElementById('filterForm').submit();
+        }, 500); // Wait 500ms after user stops typing
+      });
+    }
+
+    // Auto-submit on filter changes
+    const filterSelects = document.querySelectorAll('.filter-select');
+    filterSelects.forEach(select => {
+      select.addEventListener('change', function() {
+        showLoading();
+        document.getElementById('filterForm').submit();
+      });
+    });
+
+    // Show loading spinner
+    function showLoading() {
+      if (loadingSpinner && resumeResults) {
+        loadingSpinner.style.display = 'block';
+        resumeResults.style.opacity = '0.5';
+      }
+    }
+
+    // Hide loading spinner (called when page loads)
+    function hideLoading() {
+      if (loadingSpinner && resumeResults) {
+        loadingSpinner.style.display = 'none';
+        resumeResults.style.opacity = '1';
+      }
+    }
+
+    // Hide loading when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      hideLoading();
+      
+      // Add smooth scroll behavior
+      document.documentElement.style.scrollBehavior = 'smooth';
+      
+      // Add entrance animations to cards
+      const cards = document.querySelectorAll('.resume-card');
+      cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+        setTimeout(() => {
+          card.style.opacity = '1';
+          card.style.transform = 'translateY(0)';
+        }, index * 100);
+      });
+    });
+
+    // Enhanced keyboard navigation
+    document.addEventListener('keydown', function(e) {
+      // ESC to clear search
+      if (e.key === 'Escape' && searchInput) {
+        searchInput.value = '';
+        document.getElementById('filterForm').submit();
+      }
+      
+      // Enter to submit form
+      if (e.key === 'Enter' && (e.target === searchInput || e.target.classList.contains('filter-select'))) {
+        document.getElementById('filterForm').submit();
+      }
+    });
+
+    // Delete resume functionality
+    async function deleteResume(cvId, buttonElement) {
+      if (!confirm('Are you sure you want to delete this resume? This action cannot be undone.')) return;
+    
+      try {
+        const response = await fetch(`/delete-resume/${cvId}/`, {
+          method: 'DELETE',
+          headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value || 'no-csrf-token'
+          }
+        });
+    
+        const result = await response.json();
+    
+        if (result.success) {
+          // Show success message
+          const card = buttonElement.closest('.resume-card');
+          card.style.transform = 'scale(0.95)';
+          card.style.opacity = '0.5';
+          
+          setTimeout(() => {
+            card.remove();
+            
+            // Update results count
+            const remainingCards = document.querySelectorAll('.resume-card').length;
+            const resultsInfo = document.querySelector('.results-info');
+            if (resultsInfo && remainingCards === 0) {
+              location.reload(); // Reload to show empty state
+            }
+          }, 300);
+        } else {
+          alert('Error: ' + result.message);
+        }
+      } catch (error) {
+        alert('Delete failed: ' + error.message);
+      }
+    }
+
+    // Add tooltips to action buttons
+    document.querySelectorAll('[title]').forEach(element => {
+      element.addEventListener('mouseenter', function() {
+        // Simple tooltip implementation
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip';
+        tooltip.textContent = this.getAttribute('title');
+        document.body.appendChild(tooltip);
+        
+        const rect = this.getBoundingClientRect();
+        tooltip.style.position = 'absolute';
+        tooltip.style.top = (rect.top - 35) + 'px';
+        tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+        tooltip.style.transform = 'translateX(-50%)';
+        tooltip.style.background = '#333';
+        tooltip.style.color = 'white';
+        tooltip.style.padding = '5px 10px';
+        tooltip.style.borderRadius = '4px';
+        tooltip.style.fontSize = '12px';
+        tooltip.style.zIndex = '1000';
+      });
+      
+      element.addEventListener('mouseleave', function() {
+        const tooltip = document.querySelector('.tooltip');
+        if (tooltip) {
+          tooltip.remove();
+        }
+      });
+    });
+  </script>
+{% endblock %}
