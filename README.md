@@ -18,71 +18,50 @@ Match candidates to job postings using a scoring system.
 Provide exportable ranked lists for recruiters.
 
 # 🔍 Features
-Core Functionalities
 
-CV Upload: Bulk PDF uploads with AI parsing.
+Core Functionalities:
 
-Job Offer Management: Create, edit, delete, and view job postings.
+- CV Upload: Bulk PDF uploads with AI parsing.
 
-Information Extraction: Use LLMs to parse CVs and job descriptions into JSON.
+- Job Offer Management: Create, edit, delete, and view job postings.
 
-Matching & Scoring:
+- Information Extraction: Use LLMs to parse CVs and job descriptions into JSON.
 
-Semantic similarity via BERT embeddings.
+- Matching & Scoring:
 
-Grammar checking with penalty scoring.
+    * Semantic similarity via BERT embeddings.
 
-Weighted final match score.
+    * Grammar checking with penalty scoring.
 
-Results & Reporting:
+- Results & Reporting:
 
-Ranked candidate lists.
+    * Ranked candidate lists.
 
-Export to Excel.
+    * Export to Excel.
 
-Analytics Dashboard:
-
-KPIs, match score distribution, and trends.
+- Analytics Dashboard: KPIs, match score distribution, and trends.
 
 
 # 🛠 Technology Stack
 
-Backend:
+- Backend: Python 3 , Django (MVT framework), Groq API with LLaMA 3–8B model, PyMuPDF (PDF text extraction) , BERT / Sentence Transformers (semantic similarity), LanguageTool API (grammar checking)
 
-Python 3
+- Frontend: HTML, CSS, JavaScript, Django Templates
 
-Django (MVT framework)
-
-Groq API with LLaMA 3–8B model
-
-PyMuPDF (PDF text extraction)
-
-BERT / Sentence Transformers (semantic similarity)
-
-LanguageTool API (grammar checking)
-
-Frontend:
-
-HTML, CSS, JavaScript
-
-Django Templates
-
-Database:
-
-PostgreSQL (default, can use SQLite for dev)
+- Database: PostgreSQL (default, can use SQLite for dev)
 
 
 # 📊 AI Matching Pipeline
 
-Text Extraction – Convert PDFs to text using PyMuPDF.
+- Text Extraction – Convert PDFs to text using PyMuPDF.
 
-LLM Parsing – Extract structured fields (skills, experience, etc.) with Groq-hosted LLaMA 3–8B.
+- LLM Parsing – Extract structured fields (skills, experience, etc.) with Groq-hosted LLaMA 3–8B.
 
-Embedding Generation – Encode CVs and job offers into vector space using BERT.
+- Embedding Generation – Encode CVs and job offers into vector space using BERT.
 
-Similarity Scoring – Calculate cosine similarity, adjust with grammar penalty.
+- Similarity Scoring – Calculate cosine similarity, adjust with grammar penalty.
 
-Ranking & Export – Produce a ranked list of candidates per job offer.
+- Ranking & Export – Produce a ranked list of candidates per job offer.
 
 # 🚀 Installation & Setup
 
