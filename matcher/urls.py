@@ -44,6 +44,7 @@ urlpatterns = [
     path('api/analytics/activity/recent/', views.get_recent_activity_api, name='recent_activity_api'),
     path('api/analytics/companies/', views.get_top_companies_api, name='companies_api'),
     path('api/analytics/skills/', views.get_top_skills_api, name='skills_api'),
+    path('api/analytics/experience-levels/', views.experience_levels_api, name='experience_levels_api'),
     
     
     

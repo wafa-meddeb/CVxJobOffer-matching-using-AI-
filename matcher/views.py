@@ -6,6 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods,require_GET, require_POST
 from django.contrib import messages
 from django.urls import reverse
+from django.db.models import Case, When, F, Count, IntegerField, FloatField, Value
 
 
 from django.db.models import Count, Avg, Max, Min, Q
@@ -1467,96 +1468,96 @@ def safe_analytics_operation(operation_name):
 @require_http_methods(["GET"])
 def analytics_api(request):
     """
-    Comprehensive analytics API endpoint
+    Comprehensive analytics API endpoint that matches the front-end contract.
+    Returns:
+      - statistics (all percent-scaled)
+      - score_distribution (buckets)
+      - top_matches (scores in percent)
+      - recent_activity (scores in percent)
+      - top_companies
+      - top_skills
+      - experience_levels
+      - weekly_trends (array; scores in percent)
     """
     try:
         logger.info("Fetching comprehensive analytics data")
-        
-        # Basic Statistics
+
         total_jobs = JobOffer.objects.count()
         total_resumes = CV.objects.count()
         total_matches = MatchResult.objects.count()
-        
-        # Get time period filter
+
+        # Period filter
         period = request.GET.get('period', 'all')  # all, 30, 7
-        
-        # Apply date filtering if needed
         matches_queryset = MatchResult.objects.all()
         if period != 'all':
             days = int(period)
             cutoff_date = timezone.now() - timedelta(days=days)
             matches_queryset = matches_queryset.filter(matched_at__gte=cutoff_date)
-        
-        # Score Statistics
+
+        # Scale detection
+        uses_percent = matches_queryset.filter(score__gt=1).exists()
+        threshold = 70 if uses_percent else 0.70
+
+        # Stats
         score_stats = matches_queryset.aggregate(
             avg_score=Avg('score'),
             max_score=Max('score'),
             min_score=Min('score')
         )
-        
-        # Score Distribution
+
+        # Distribution (bucketed; scale-aware)
         score_distribution = calculate_score_distribution(matches_queryset)
         
-        # Top Matches (highest scores)
-        top_matches = get_top_matches(10)
-        
-        # Recent Activity (latest matches)
-        recent_activity = get_recent_activity(10)
-        
-        # Company Insights
+
+
+        # Top / recent (ensure percent-scaled)
+        top_matches = get_top_matches(10)          # make sure helper scales with _scale_score
+        recent_activity = get_recent_activity(10)  # make sure helper scales with _scale_score
+
+        # Insights
         top_companies = get_top_companies(10)
-        
-        # Skills Analysis
         top_skills = get_top_skills(15)
-        
-        # Experience Level Distribution
         experience_levels = get_experience_levels()
-        
-        # Weekly trends for the last 7 weeks
+
+        # Trends as array (what the FE expects)
         weekly_trends = get_weekly_trends()
-        
-        # Match success rate (matches with score > 70%)
-        high_score_matches = matches_queryset.filter(score__gte=70).count()
-        success_rate = (high_score_matches / total_matches * 100) if total_matches > 0 else 0
-        
-        # Prepare response data
+
+        # Success rate (threshold respects storage scale)
+        high_score_matches = matches_queryset.filter(score__gte=threshold).count()
+        success_rate = (high_score_matches / total_matches * 100) if total_matches else 0
+
         response_data = {
             'success': True,
             'statistics': {
                 'total_jobs': total_jobs,
                 'total_resumes': total_resumes,
                 'total_matches': total_matches,
-                'avg_score': round(_scale_score(score_stats['avg_score']), 2),
-                'max_score': round(_scale_score(score_stats['max_score']), 2),
-                'min_score': round(_scale_score(score_stats['min_score']), 2),
-                'success_rate': round(success_rate, 1)
+                'avg_score': round(_scale_score(score_stats['avg_score']), 2) if score_stats['avg_score'] is not None else 0.0,
+                'max_score': round(_scale_score(score_stats['max_score']), 2) if score_stats['max_score'] is not None else 0.0,
+                'min_score': round(_scale_score(score_stats['min_score']), 2) if score_stats['min_score'] is not None else 0.0,
+                'success_rate': round(success_rate, 1),
             },
+            'api_signature': 'analytics_v3', 
             'score_distribution': score_distribution,
             'top_matches': top_matches,
             'recent_activity': recent_activity,
             'top_companies': top_companies,
             'top_skills': top_skills,
             'experience_levels': experience_levels,
-            'weekly_trends': weekly_trends,
+            'weekly_trends': weekly_trends,      # <<< important: array key
             'period': period
         }
-        
-        logger.info(f"Analytics data prepared successfully for period: {period}")
+
         return JsonResponse(response_data)
-        
+
     except Exception as e:
         logger.error(f"Error in analytics_api: {e}")
         return JsonResponse({
             'success': False,
             'error': f'Failed to fetch analytics: {str(e)}',
             'statistics': {
-                'total_jobs': 0,
-                'total_resumes': 0,
-                'total_matches': 0,
-                'avg_score': 0,
-                'max_score': 0,
-                'min_score': 0,
-                'success_rate': 0
+                'total_jobs': 0, 'total_resumes': 0, 'total_matches': 0,
+                'avg_score': 0, 'max_score': 0, 'min_score': 0, 'success_rate': 0
             },
             'score_distribution': {},
             'top_matches': [],
@@ -1567,48 +1568,41 @@ def analytics_api(request):
             'weekly_trends': []
         }, status=500)
 
+
 def calculate_score_distribution(matches_queryset):
     """
-    Calculate distribution of match scores in ranges.
-    Works whether scores are stored as 0–1 or 0–100.
+    Works for scores stored as 0–1 or 0–100.
+    Normalizes per row to percent and aggregates in one query.
     """
     try:
-        # Detect scale: if any score > 1, assume 0–100
-        uses_percent = matches_queryset.filter(score__gt=1).exists()
+        qs = matches_queryset.annotate(
+            pct=Case(
+                When(score__isnull=True, then=Value(0.0)),
+                When(score__lte=1.0, then=F('score') * 100.0),
+                default=F('score'),
+                output_field=FloatField(),
+            )
+        )
 
-        if uses_percent:
-            ranges = {
-                '90-100': (90, 100),
-                '80-89': (80, 89.999),
-                '70-79': (70, 79.999),
-                '60-69': (60, 69.999),
-                '<60': (None, 60)  # less than 60
-            }
-        else:
-            # thresholds in fraction scale
-            ranges = {
-                '90-100': (0.90, 1.000),
-                '80-89': (0.80, 0.89999),
-                '70-79': (0.70, 0.79999),
-                '60-69': (0.60, 0.69999),
-                '<60': (None, 0.60)  # less than 0.60
-            }
+        agg = qs.aggregate(
+            b90_100=Count(Case(When(pct__gte=90, then=1), output_field=IntegerField())),
+            b80_89 =Count(Case(When(pct__gte=80, pct__lt=90, then=1), output_field=IntegerField())),
+            b70_79 =Count(Case(When(pct__gte=70, pct__lt=80, then=1), output_field=IntegerField())),
+            b60_69 =Count(Case(When(pct__gte=60, pct__lt=70, then=1), output_field=IntegerField())),
+            blt60  =Count(Case(When(pct__lt=60, then=1), output_field=IntegerField())),
+        )
 
-        distribution = {}
-
-        for label, (low, high) in ranges.items():
-            if low is None:
-                # "<60" bucket
-                count = matches_queryset.filter(score__lt=high).count()
-            else:
-                count = matches_queryset.filter(score__gte=low, score__lte=high).count()
-            distribution[label] = count
-
-        return distribution
-
+        return {
+            '90-100': agg['b90_100'] or 0,
+            '80-89':  agg['b80_89']  or 0,
+            '70-79':  agg['b70_79']  or 0,
+            '60-69':  agg['b60_69']  or 0,
+            '<60':    agg['blt60']   or 0,
+        }
     except Exception as e:
         logger.error(f"Error calculating score distribution: {e}")
         return {'90-100': 0, '80-89': 0, '70-79': 0, '60-69': 0, '<60': 0}
+
 
 
 def get_top_matches(limit=10):
@@ -1625,7 +1619,7 @@ def get_top_matches(limit=10):
                     'cv_name': match.cv.name if match.cv else 'Unknown Candidate',
                     'job_title': match.job_offer.title if match.job_offer else 'Unknown Position',
                     'company': match.job_offer.company if match.job_offer else 'Unknown Company',
-                    'score': round(float(match.score), 2) if match.score else 0.0,
+                    'score': round(_scale_score(m.score), 1) if m.score is not None else 0.0,
                     'matched_at': match.matched_at.strftime('%Y-%m-%d') if match.matched_at else 'Unknown',
                     'cv_id': match.cv.cv_id if match.cv else None,
                     'job_id': match.job_offer.job_id if match.job_offer else None
@@ -1654,7 +1648,7 @@ def get_recent_activity(limit=10):
                     'cv_name': match.cv.name if match.cv else 'Unknown Candidate',
                     'job_title': match.job_offer.title if match.job_offer else 'Unknown Position',
                     'company': match.job_offer.company if match.job_offer else 'Unknown Company',
-                    'score': round(float(match.score), 2) if match.score else 0.0,
+                    'score': round(_scale_score(m.score), 1) if m.score is not None else 0.0,
                     'date': match.matched_at.strftime('%Y-%m-%d') if match.matched_at else 'Unknown',
                     'time_ago': get_time_ago(match.matched_at) if match.matched_at else 'Unknown'
                 }
@@ -1752,83 +1746,111 @@ def get_top_skills(limit=15):
         logger.error(f"Error getting top skills: {e}")
         return []
 
+import re
+from collections import Counter
+
+# Friendly labels for common raw values
+_LEVEL_MAP = {
+    'junior': 'Junior (0-2 years)',
+    'jr': 'Junior (0-2 years)',
+    'mid': 'Mid-level (2-5 years)',
+    'mid-level': 'Mid-level (2-5 years)',
+    'middle': 'Mid-level (2-5 years)',
+    'intermediate': 'Mid-level (2-5 years)',
+    'senior': 'Senior (5+ years)',
+    'sr': 'Senior (5+ years)',
+    'lead': 'Lead/Principal (7+ years)',
+    'principal': 'Lead/Principal (7+ years)',
+    'entry': 'Entry Level',
+    'entry-level': 'Entry Level',
+    'intern': 'Internship',
+    'internship': 'Internship',
+}
+
+# Heuristics when the DB field is empty — guess from the job title
+_TITLE_PATTERNS = [
+    (re.compile(r'\b(intern|internship)\b', re.I), 'Internship'),
+    (re.compile(r'\b(entry[-\s]?level)\b', re.I), 'Entry Level'),
+    (re.compile(r'\b(junior|jr\.?)\b', re.I), 'Junior (0-2 years)'),
+    (re.compile(r'\b(mid[-\s]?level|middle|intermediate|mid)\b', re.I), 'Mid-level (2-5 years)'),
+    (re.compile(r'\b(senior|sr\.?)\b', re.I), 'Senior (5+ years)'),
+    (re.compile(r'\b(lead|principal)\b', re.I), 'Lead/Principal (7+ years)'),
+]
+
+def _normalize_level(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    k = str(raw).strip().lower()
+    if not k:  # handles empty strings (column is NOT NULL but may be '')
+        return None
+    return _LEVEL_MAP.get(k) or _LEVEL_MAP.get(k.replace(' ', '-'))  # try with dash
+
+def _infer_from_title(title: str | None) -> str | None:
+    if not title:
+        return None
+    for pat, label in _TITLE_PATTERNS:
+        if pat.search(title):
+            return label
+    return None
+
 def get_experience_levels():
     """
-    Analyze experience level distribution from job offers
+    Build experience level distribution from JobOffer.experience_level.
+    Falls back to inferring the level from JobOffer.title if the field is blank.
+    Returns a list of {'name': ..., 'count': ...} sorted by count desc.
     """
     try:
-        experience_levels = JobOffer.objects.exclude(
-            experience_level__isnull=True
-        ).exclude(
-            experience_level__exact=''
-        ).values('experience_level').annotate(
-            count=Count('id')
-        ).order_by('-count')
-        
-        # Normalize experience level names
-        level_mapping = {
-            'junior': 'Junior (0-2 years)',
-            'mid': 'Mid-level (2-5 years)', 
-            'mid-level': 'Mid-level (2-5 years)',
-            'senior': 'Senior (5+ years)',
-            'lead': 'Lead/Principal (7+ years)',
-            'principal': 'Lead/Principal (7+ years)',
-            'entry': 'Entry Level',
-            'intern': 'Internship'
-        }
-        
-        normalized_levels = {}
-        for level in experience_levels:
-            original_level = level['experience_level'].lower().strip()
-            normalized_name = level_mapping.get(original_level, level['experience_level'])
-            
-            if normalized_name in normalized_levels:
-                normalized_levels[normalized_name] += level['count']
-            else:
-                normalized_levels[normalized_name] = level['count']
-        
-        # Convert to list format
-        experience_data = [
-            {'name': name, 'count': count}
-            for name, count in sorted(normalized_levels.items(), key=lambda x: x[1], reverse=True)
+        # Pull both fields; the column is NOT NULL but may contain empty strings
+        rows = JobOffer.objects.values_list('experience_level', 'title')
+        counter = Counter()
+
+        for raw_level, title in rows:
+            label = _normalize_level(raw_level) or _infer_from_title(title) or 'Unspecified'
+            counter[label] += 1
+
+        # If you prefer to hide 'Unspecified', filter it out here:
+        items = [
+            {'name': name, 'count': cnt}
+            for name, cnt in counter.items()
+            if cnt > 0
         ]
-        
-        return experience_data
-        
+
+        items.sort(key=lambda x: x['count'], reverse=True)
+        return items
+
     except Exception as e:
         logger.error(f"Error getting experience levels: {e}")
         return []
+    
+@require_GET
+def experience_levels_api(request):
+    items = get_experience_levels()  # the helper you showed
+    return JsonResponse({'success': True, 'items': items})
+
 
 def get_weekly_trends():
     try:
-        weeks_data = []
-        today = timezone.now()
-
-        # Detect scale once
+        out = []
+        now = timezone.now()
         uses_percent = MatchResult.objects.filter(score__gt=1).exists()
 
         for i in range(8):
-            week_start = today - timedelta(weeks=i+1)
-            week_end = today - timedelta(weeks=i)
+            start = now - timedelta(weeks=i+1)
+            end   = now - timedelta(weeks=i)
 
-            week_matches = MatchResult.objects.filter(
-                matched_at__gte=week_start,
-                matched_at__lt=week_end
-            )
+            qs = MatchResult.objects.filter(matched_at__gte=start, matched_at__lt=end)
+            cnt = qs.count()
+            avg = qs.aggregate(avg_score=Avg('score'))['avg_score'] or 0.0
+            avg = avg if uses_percent else (avg * 100.0)
 
-            week_count = week_matches.count()
-            week_avg = week_matches.aggregate(avg_score=Avg('score'))['avg_score'] or 0
-            if not uses_percent:
-                week_avg *= 100  # convert fraction -> percentage
-
-            weeks_data.append({
-                'week': f"Week {i+1}",
-                'date': week_start.strftime('%m/%d'),
-                'matches': week_count,
-                'avg_score': round(week_avg, 1)
+            out.append({
+                'week': f'W{i+1}',
+                'date': start.date().isoformat(),   # ISO date → always parsable
+                'matches': cnt,
+                'avg_score': round(avg, 1)
             })
 
-        return list(reversed(weeks_data))
+        return list(reversed(out))
     except Exception as e:
         logger.error(f"Error getting weekly trends: {e}")
         return []
@@ -1980,7 +2002,9 @@ def get_recent_activity_api(request):
 
         qs = (MatchResult.objects
               .select_related('cv', 'job_offer')
+              .filter(matched_at__isnull=False)            # avoid null dates
               .order_by('-matched_at'))
+
         if start_dt:
             qs = qs.filter(matched_at__gte=start_dt)
 
@@ -2003,19 +2027,22 @@ def get_recent_activity_api(request):
         items = []
         for m in qs[:limit]:
             items.append({
-                'cv_name': m.cv.name if m.cv else 'Unknown Candidate',
-                'job_title': m.job_offer.title if m.job_offer else 'Unknown Position',
-                'company': m.job_offer.company if m.job_offer else 'Unknown Company',
-                'score': round(_scale_score(m.score), 1),
-                'date': m.matched_at.date().isoformat() if m.matched_at else None,
-                'time_ago': _time_ago(m.matched_at) if m.matched_at else 'Unknown',
+                'cv_name'   : m.cv.name if m.cv else 'Unknown Candidate',
+                'job_title' : m.job_offer.title if m.job_offer else 'Unknown Position',
+                'company'   : m.job_offer.company if m.job_offer else 'Unknown Company',
+                # always percent-scale (0–100) for the UI
+                'score'     : round(_scale_score(m.score), 1) if m.score is not None else 0.0,
+                # IMPORTANT: provide matched_at because the JS uses it
+                'matched_at': m.matched_at.isoformat() if m.matched_at else None,
+                # keep these for convenience/backward-compat
+                'date'      : m.matched_at.date().isoformat() if m.matched_at else None,
+                'time_ago'  : _time_ago(m.matched_at) if m.matched_at else 'Unknown',
             })
 
         return JsonResponse({'success': True, 'items': items, 'count': len(items)})
     except Exception as e:
         logger.exception("get_recent_activity_api failed")
         return JsonResponse({'success': False, 'error': str(e), 'items': []}, status=500)
-
 # ---- /api/analytics/companies/ --------------------------------------------
 
 @require_GET

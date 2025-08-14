@@ -18,14 +18,6 @@ class JobOffer(models.Model):
     salary_range = models.CharField(max_length=255)
     technologies = JSONField(default=list)
 
-    def build_prompt_job_offer(self, text):
-        pass
-
-    def parse_with_llm(self, prompt):
-        pass
-
-    def get_embedding(self, text):
-        pass
 
 class CV(models.Model):
     id = models.CharField(max_length=255, primary_key=True)  # Add this if needed
@@ -42,20 +34,7 @@ class CV(models.Model):
     file = models.FileField(upload_to='resumes/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
-    def extract_text_from_pdf(self, path):
-        pass
 
-    def build_prompt(self, text):
-        pass
-
-    def parse_with_llm(self, prompt):
-        pass
-
-    def get_embedding(self, text):
-        pass
-
-    def apply_grammar_penalty(self, text, base_score):
-        pass
 
 class MatchResult(models.Model):
     uuid = models.CharField(max_length=255, unique=True)
@@ -64,19 +43,10 @@ class MatchResult(models.Model):
     score = models.FloatField()
     matched_at = models.DateTimeField(auto_now_add=True)
 
-    def compute_score(self):
-        pass
-
-    def apply_grammar_penalty(self):
-        pass
-
+    
 class HRUser(models.Model):
     user_id = models.CharField(max_length=255, unique=True)
 
-    def upload_cv(self):
-        pass
-
-    def upload_job_offer(self):
-        pass
+   
 
 

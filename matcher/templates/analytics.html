@@ -1073,927 +1073,463 @@
 }
 </style>
 
-<!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
 <script>
-// Enhanced Analytics Dashboard Class
+/* ------------- Small helpers ------------- */
+const scaleToPercent = (v) => (v == null ? 0 : (v <= 1.000001 ? v * 100 : v));
+const withParams = (base, params = {}) => {
+  const u = new URL(base, window.location.origin);
+  Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
+  return u.toString();
+};
+const parseMaybeItems = (payload) => Array.isArray(payload)
+  ? payload
+  : (Array.isArray(payload?.items) ? payload.items : (payload?.items || []));
+
+/* ------------- Dashboard ------------- */
 class AnalyticsDashboard {
-    constructor() {
-        this.data = {};
-        this.refreshInterval = null;
-        this.lastUpdated = null;
-        this.currentPeriod = 'all';
-        this.activityChart = null;
-        this.isLoading = false;
-        this.retryCount = 0;
-        this.maxRetries = 3;
+  constructor() {
+    this.currentPeriod = 'all';
+    this.activityChart = null;
+    this.endpoints = {
+      main: '/api/analytics/',
+      topMatches: '/api/analytics/matches/top/',
+      recentActivity: '/api/analytics/activity/recent/',
+      companies: '/api/analytics/companies/',
+      skills: '/api/analytics/skills/',
+      experienceLevels: '/api/analytics/experience-levels/',
+    };
+    this.data = {};
+    this.overlay = document.getElementById('loading-overlay');
+    this.errorAlert = document.getElementById('error-alert');
+  }
 
-        // API endpoints configuration
-        this.endpoints = {
-            main: '/api/analytics/',
-            topMatches: '/api/analytics/matches/top/',
-            recentActivity: '/api/analytics/activity/recent/',
-            companies: '/api/analytics/companies/',
-            skills: '/api/analytics/skills/'
-        };
+  async init() {
+    this.setupEventListeners();
+    await this.safeLoadAll();
+  }
 
-        // Performance monitoring
-        this.performanceMetrics = {
-            loadTimes: [],
-            errorCounts: {},
-            lastSuccessfulLoad: null
-        };
+  /* Loading & error UI */
+  showLoading(){ if (this.overlay) this.overlay.classList.remove('hidden'); }
+  hideLoading(){ if (this.overlay) this.overlay.classList.add('hidden'); }
+  showError(msg){
+    if (this.errorAlert){
+      const m = document.getElementById('error-message');
+      if (m) m.textContent = msg;
+      this.errorAlert.style.display = 'flex';
     }
+  }
+  hideError(){ if (this.errorAlert) this.errorAlert.style.display = 'none'; }
 
-    // Initialize the dashboard
-    async init() {
-        try {
-            this.showLoading();
-            this.setupEventListeners();
-            await this.loadInitialData();
-            this.startAutoRefresh();
-            this.hideLoading();
-            this.addAnimations();
-        } catch (error) {
-            this.handleError('Failed to initialize dashboard', error);
+  async safeLoadAll(){
+    this.hideError();
+    this.showLoading();
+    try {
+      await this.loadAll();
+    } catch (e){
+      console.error('Analytics load failed', e);
+      this.showError('Failed to load analytics. See console for details.');
+    } finally {
+      this.hideLoading();
+      const el = document.getElementById('last-updated');
+      if (el) el.textContent = new Date().toLocaleTimeString();
+    }
+  }
+
+  setupEventListeners() {
+    document.querySelectorAll('.btn-filter').forEach(b => {
+      b.addEventListener('click', e => {
+        document.querySelectorAll('.btn-filter').forEach(x => x.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        this.currentPeriod = e.currentTarget.dataset.period;
+        this.safeLoadAll();
+      });
+    });
+
+    const refreshChartBtn = document.getElementById('refresh-chart-btn');
+    if (refreshChartBtn) refreshChartBtn.addEventListener('click', () => this.renderActivityTimeline());
+
+    const refreshAllBtn = document.getElementById('refresh-all-btn');
+    if (refreshAllBtn) refreshAllBtn.addEventListener('click', () => this.safeLoadAll());
+
+    const retryBtn = document.getElementById('retry-btn');
+    if (retryBtn) retryBtn.addEventListener('click', () => this.safeLoadAll());
+
+    /* === added: export button wiring === */
+    const exportBtn = document.getElementById('export-btn');
+    if (exportBtn) exportBtn.addEventListener('click', () => this.exportData());
+    /* === end added === */
+  }
+
+  /* ----------- Load all data & normalize ----------- */
+  async loadAll() {
+    const params = this.currentPeriod === 'all' ? {} : { period: this.currentPeriod };
+
+    // add the experience levels request
+    const [main, topMatches, recentActivity, companies, skills, expLevels] = await Promise.all([
+      fetch(withParams(this.endpoints.main, params)).then(r => r.json()),
+      fetch(withParams(this.endpoints.topMatches, { limit: 10, ...params })).then(r => r.json()),
+      fetch(withParams(this.endpoints.recentActivity, { limit: 10, ...params })).then(r => r.json()),
+      fetch(withParams(this.endpoints.companies, { limit: 10 })).then(r => r.json()),
+      fetch(withParams(this.endpoints.skills, { limit: 15 })).then(r => r.json()),
+      fetch(this.endpoints.experienceLevels).then(r => r.json()).catch(() => ([])), // robust if endpoint fails
+    ]);
+
+    const stats = main.statistics || {};
+    const scoreDist = main.score_distribution || main.distribution || {}; // might be missing (Option 2)
+    const weeklyTrends = Array.isArray(main.weekly_trends)
+      ? main.weekly_trends
+      : this.normalizeDailyTrends(main.daily_trends);
+
+    const normStats = {
+      total_jobs: stats.total_jobs || 0,
+      total_resumes: stats.total_resumes || 0,
+      total_matches: stats.total_matches || 0,
+      avg_score: Number(scaleToPercent(stats.avg_score || 0).toFixed(2)),
+      max_score: Number(scaleToPercent(stats.max_score || 0).toFixed(2)),
+      min_score: Number(scaleToPercent(stats.min_score || 0).toFixed(2)),
+      success_rate: Number((stats.success_rate || 0).toFixed(1)),
+    };
+
+    const normTop = (topMatches.items || topMatches || []).map(it => ({
+      ...it,
+      score: Number(scaleToPercent(it.score).toFixed(1)),
+    }));
+    const normRecent = (recentActivity.items || recentActivity || []).map(it => ({
+      ...it,
+      score: Number(scaleToPercent(it.score).toFixed(1)),
+    }));
+    const normTrends = (weeklyTrends || []).map(t => ({
+      ...t,
+      avg_score: Number(scaleToPercent(t.avg_score).toFixed(1)),
+    }));
+
+    // normalize expLevels from either {items:[...]} or [...]
+    const normExperience = parseMaybeItems(expLevels);
+
+    this.data = {
+      statistics: normStats,
+      score_distribution: scoreDist, // may be empty/summary -> we’ll derive below
+      weekly_trends: normTrends,
+      top_matches: normTop,
+      recent_activity: normRecent,
+      top_companies: (companies.items || companies || []),
+      top_skills: (skills.items || skills || []),
+      experience_levels: normExperience, // <-- now comes from separate endpoint
+      period: main.period || this.currentPeriod,
+    };
+
+    // Ensure we always have a 5-bucket distribution
+    this.ensureDistribution();
+
+    /* Render */
+    this.renderMainStats();
+    this.renderScoreDistribution();
+    this.renderTopMatches();
+    this.renderRecentActivity();
+    this.renderInsights();
+    this.renderActivityTimeline();
+  }
+
+  normalizeDailyTrends(daily_trends) {
+    if (!daily_trends || typeof daily_trends !== 'object') return [];
+    const arr = Object.entries(daily_trends).map(([date, obj]) => ({
+      week: date,
+      date,
+      matches: obj.count || 0,
+      avg_score: obj.avg_score ?? 0,
+    }));
+    return arr.sort((a,b)=> new Date(a.date) - new Date(b.date));
+  }
+
+  /* ----------- Rendering ----------- */
+  renderMainStats() {
+    const s = this.data.statistics;
+    this.setCounter('total-jobs', s.total_jobs);
+    this.setCounter('total-resumes', s.total_resumes);
+    this.setCounter('total-matches', s.total_matches);
+    this.setCounter('avg-score', s.avg_score, '%', 1);
+    const maxEl = document.getElementById('max-score');
+    if (maxEl) maxEl.textContent = s.max_score.toFixed(1);
+  }
+
+  setCounter(id, value, suffix = '', decimals = 0) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const end = Number(value) || 0;
+    const start = 0, duration = 600, t0 = performance.now();
+    const step = (t) => {
+      const p = Math.min((t - t0)/duration, 1), eased = 1 - Math.pow(1-p, 3);
+      el.textContent = (start + (end-start)*eased).toFixed(decimals) + suffix;
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  /* ----------- Client-side distribution (Option 2) ----------- */
+  normalizeDistributionObject(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    if (Object.keys(raw).length === 0) return null;
+
+    const targets = {
+      '90-100': ['90-100','90_100','b90_100'],
+      '80-89':  ['80-89','80_89','b80_89'],
+      '70-79':  ['70-79','70_79','b70_79'],
+      '60-69':  ['60-69','60_69','b60_69'],
+      '<60':    ['<60','below_60','blt60'],
+    };
+
+    const dist = { '90-100':0,'80-89':0,'70-79':0,'60-69':0,'<60':0 };
+    let foundAny = false;
+
+    for (const [target, aliases] of Object.entries(targets)) {
+      for (const k of aliases) {
+        if (Object.prototype.hasOwnProperty.call(raw, k)) {
+          dist[target] = Number(raw[k]) || 0;
+          foundAny = true;
+          break;
         }
+      }
     }
+    return foundAny ? dist : null;
+  }
 
-    // Setup all event listeners
-    setupEventListeners() {
-        // Period filter buttons
-        document.querySelectorAll('.btn-filter').forEach(btn => {
-            btn.addEventListener('click', (e) => this.handlePeriodChange(e));
+  computeDistributionFromLists(lists) {
+    const buckets = { '90-100': 0, '80-89': 0, '70-79': 0, '60-69': 0, '<60': 0 };
+    const seen = new Set();
+    const canon = s => (s == null ? '' : String(s).trim().toLowerCase().replace(/\s+/g, ' '));
+
+    for (const m of (lists || [])) {
+      if (!m) continue;
+
+      const idKey   = `${m.cv_id || m.cv_uuid || ''}|${m.job_id || m.job_uuid || ''}`;
+      const nameKey = `${canon(m.cv_name)}|${canon(m.job_title)}`;
+      if (seen.has(idKey) || seen.has(nameKey)) continue;
+      if (idKey)   seen.add(idKey);
+      if (nameKey) seen.add(nameKey);
+
+      let s = Number(m.score || 0);
+      if (Number.isFinite(s) && s <= 1.000001) s *= 100;
+
+      if (s >= 90) buckets['90-100']++;
+      else if (s >= 80) buckets['80-89']++;
+      else if (s >= 70) buckets['70-79']++;
+      else if (s >= 60) buckets['60-69']++;
+      else buckets['<60']++;
+    }
+    return buckets;
+  }
+
+  ensureDistribution() {
+    let dist = this.normalizeDistributionObject(this.data.score_distribution);
+    if (!dist) {
+      const combined = [
+        ...(this.data.top_matches || []),
+        ...(this.data.recent_activity || []),
+      ];
+      dist = this.computeDistributionFromLists(combined);
+    }
+    this.data.score_distribution = dist;
+  }
+
+  renderScoreDistribution() {
+    const dist = (this.data && this.data.score_distribution) || {};
+    const mapping = [
+      { key: '90-100', id: '90-100'   },
+      { key: '80-89',  id: '80-89'    },
+      { key: '70-79',  id: '70-79'    },
+      { key: '60-69',  id: '60-69'    },
+      { key: '<60',    id: 'below-60' }
+    ];
+    const total = Math.max(1, mapping.reduce((s,m) => s + (Number(dist[m.key])||0), 0));
+
+    for (const m of mapping) {
+      const count = Number(dist[m.key]) || 0;
+      const pct = (count / total) * 100;
+
+      const countEl = document.getElementById(`score-${m.id}`);
+      const barEl   = document.getElementById(`bar-${m.id}`);
+
+      if (countEl) {
+        countEl.textContent = String(count);
+        requestAnimationFrame(() => { countEl.textContent = String(count); });
+      }
+      if (barEl) {
+        barEl.style.setProperty('width', `${pct}%`, 'important');
+        requestAnimationFrame(() => {
+          barEl.style.setProperty('width', `${pct}%`, 'important');
         });
+      }
+    }
+  }
 
-        // Refresh buttons
-        const refreshAllBtn = document.getElementById('refresh-all-btn');
-        if (refreshAllBtn) {
-            refreshAllBtn.addEventListener('click', () => this.refreshAllData());
+  renderTopMatches() {
+    const container = document.getElementById('top-matches-list');
+    if (!container) return;
+    const items = this.data.top_matches || [];
+    if (!items.length) {
+      container.innerHTML = this.empty('No matches found', 'trophy');
+      return;
+    }
+    container.innerHTML = items.map((m,i)=>`
+      <div class="match-item" style="animation-delay:${i*60}ms">
+        <div class="match-info">
+          <div class="match-title">${this.escape(m.cv_name)} → ${this.escape(m.job_title)}</div>
+          <div class="match-details">
+            <i class="fas fa-building"></i> ${this.escape(m.company || 'Unknown')}
+            <i class="fas fa-calendar"></i> ${this.formatDate(m.matched_at)}
+          </div>
+        </div>
+        <div class="match-score">${Number(m.score||0).toFixed(1)}%</div>
+      </div>
+    `).join('');
+  }
+
+  renderRecentActivity() {
+    const container = document.getElementById('recent-activity-list');
+    if (!container) return;
+    const items = this.data.recent_activity || [];
+    if (!items.length) {
+      container.innerHTML = this.empty('No recent activity', 'clock');
+      return;
+    }
+    container.innerHTML = items.map((a,i)=>{
+      const when = a.matched_at || a.date || null;
+      return `
+      <div class="match-item" style="animation-delay:${i*60}ms">
+        <div class="match-info">
+          <div class="match-title">${this.escape(a.cv_name)} → ${this.escape(a.job_title)}</div>
+          <div class="match-details">
+            <i class="fas fa-building"></i> ${this.escape(a.company || 'Unknown')}
+            <i class="fas fa-clock"></i> ${this.formatRelative(when)}
+          </div>
+        </div>
+        <div class="match-score">${Number(a.score||0).toFixed(1)}%</div>
+      </div>`;
+    }).join('');
+  }
+
+  renderInsights() {
+    this.renderInsightList('top-companies', this.data.top_companies);
+    this.renderInsightList('top-skills', this.data.top_skills);
+    this.renderInsightList('experience-levels', this.data.experience_levels);
+  }
+
+  renderInsightList(id, items) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const list = items || [];
+    if (!list.length) {
+      el.innerHTML = this.empty('No data available', 'circle-info');
+      return;
+    }
+    el.innerHTML = list.map(i => `
+      <div class="insight-item">
+        <span class="insight-name">${this.escape(i.name)}</span>
+        <span class="insight-count">${this.escape(String(i.count))}</span>
+      </div>
+    `).join('');
+  }
+
+  renderActivityTimeline() {
+    const canvas = document.getElementById('activity-chart');
+    if (!canvas) return;
+
+    const trends = this.data.weekly_trends || [];
+    const labels = trends.map(d => this.prettyDate(d.date));
+    const matches = trends.map(d => d.matches || 0);
+    const scoresRaw = trends.map(d => d.avg_score || 0);
+
+    const maxScore = Math.max(0, ...scoresRaw);
+    const scores = (maxScore > 0 && maxScore <= 1.00001) ? scoresRaw.map(v => v * 100) : scoresRaw;
+
+    if (this.activityChart) this.activityChart.destroy();
+    this.activityChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label:'Daily Matches', data:matches, yAxisID:'yMatches',
+            borderColor:'#4299e1', backgroundColor:'rgba(66,153,225,0.1)', tension:0.4, fill:true, pointRadius:4, pointHoverRadius:7 },
+          { label:'Average Score (%)', data:scores, yAxisID:'yScore',
+            borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.1)', tension:0.4, fill:true, pointRadius:4, pointHoverRadius:7 }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+        scales:{
+          x:{ grid:{ display:false } },
+          yMatches:{ beginAtZero:true, position:'left', ticks:{ precision:0 } },
+          yScore:{ beginAtZero:true, max:100, position:'right', grid:{ drawOnChartArea:false }, ticks:{ callback:v=>`${v}%` } }
         }
+      }
+    });
+  }
 
-        const refreshChartBtn = document.getElementById('refresh-chart-btn');
-        if (refreshChartBtn) {
-            refreshChartBtn.addEventListener('click', () => this.refreshChart());
-        }
+  /* === added: export method === */
+  exportData() {
+    try {
+      const payload = {
+        statistics: this.data.statistics || {},
+        score_distribution: this.data.score_distribution || {},
+        weekly_trends: this.data.weekly_trends || [],
+        top_matches: this.data.top_matches || [],
+        recent_activity: this.data.recent_activity || [],
+        top_companies: this.data.top_companies || [],
+        top_skills: this.data.top_skills || [],
+        experience_levels: this.data.experience_levels || [],
+        period: this.data.period || this.currentPeriod
+      };
 
-        const retryBtn = document.getElementById('retry-btn');
-        if (retryBtn) {
-            retryBtn.addEventListener('click', () => this.retryLoad());
-        }
-
-        // Export functionality
-        const exportBtn = document.getElementById('export-btn');
-        if (exportBtn) {
-            exportBtn.addEventListener('click', () => this.exportData());
-        }
-
-        // View all buttons
-        const viewAllMatchesBtn = document.getElementById('view-all-matches');
-        if (viewAllMatchesBtn) {
-            viewAllMatchesBtn.addEventListener('click', () => this.viewAllMatches());
-        }
-
-        const viewAllActivityBtn = document.getElementById('view-all-activity');
-        if (viewAllActivityBtn) {
-            viewAllActivityBtn.addEventListener('click', () => this.viewAllActivity());
-        }
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
-
-        // Window resize handling
-        window.addEventListener('resize', this.debounce(() => this.handleResize(), 250));
-
-        // Visibility change handling (pause/resume auto-refresh)
-        document.addEventListener('visibilitychange', () => this.handleVisibilityChange());
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `analytics-${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Failed to export data:', e);
+      alert('Failed to export data. Please try again.');
     }
-
-    // Handle period filter changes
-    handlePeriodChange(e) {
-        document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        this.currentPeriod = e.target.dataset.period;
-        this.loadInitialData();
-    }
-
-    // Load all dashboard data
-    async loadInitialData() {
-        if (this.isLoading) return;
-        
-        const startTime = performance.now();
-        this.isLoading = true;
-        this.showLoading();
-
-        try {
-            // Fetch all data in parallel with timeout
-            const promises = [
-                this.fetchWithTimeout(this.withPeriod(this.endpoints.main)),
-                this.fetchWithTimeout(this.withPeriod(this.endpoints.topMatches, { limit: 10 })),
-                this.fetchWithTimeout(this.withPeriod(this.endpoints.recentActivity, { limit: 10 })),
-                this.fetchWithTimeout(`${this.endpoints.companies}?limit=10`),
-                this.fetchWithTimeout(`${this.endpoints.skills}?limit=15`)
-            ];
-
-            const [mainRes, topRes, recentRes, companiesRes, skillsRes] = await Promise.all(promises);
-
-            // Validate responses
-            this.validateResponses([mainRes, topRes, recentRes, companiesRes, skillsRes]);
-
-            // Process and store data
-            this.processData({
-                main: mainRes,
-                topMatches: topRes,
-                recentActivity: recentRes,
-                companies: companiesRes,
-                skills: skillsRes
-            });
-
-            // Render all components
-            await this.renderAllComponents();
-
-            // Update performance metrics
-            const loadTime = performance.now() - startTime;
-            this.updatePerformanceMetrics(loadTime);
-            this.resetRetryCount();
-
-        } catch (error) {
-            this.handleLoadError(error);
-        } finally {
-            this.isLoading = false;
-            this.hideLoading();
-            this.updateLastUpdated();
-        }
-    }
-
-    // Fetch with timeout and retry logic
-    async fetchWithTimeout(url, timeout = 10000) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-        try {
-            const response = await fetch(url, {
-                signal: controller.signal,
-                headers: { 'Accept': 'application/json' }
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            clearTimeout(timeoutId);
-            if (error.name === 'AbortError') {
-                throw new Error(`Request timeout for ${url}`);
-            }
-            throw error;
-        }
-    }
-
-    // Validate API responses
-    validateResponses(responses) {
-        responses.forEach((response, index) => {
-            if (!response || typeof response !== 'object') {
-                throw new Error(`Invalid response format at index ${index}`);
-            }
-            if (!response.success && !response.items && !response.statistics) {
-                throw new Error(`API error: ${response.error || 'Unknown error'}`);
-            }
-        });
-    }
-
-    // Process raw API data
-    processData(rawData) {
-        this.data = {
-            statistics: rawData.main.statistics || this.getDefaultStats(),
-            score_distribution: rawData.main.score_distribution || this.getDefaultDistribution(),
-            weekly_trends: rawData.main.weekly_trends || [],
-            top_matches: rawData.topMatches.items || [],
-            recent_activity: rawData.recentActivity.items || [],
-            top_companies: rawData.companies.items || [],
-            top_skills: rawData.skills.items || [],
-            experience_levels: rawData.main.experience_levels || []
-        };
-    }
-
-    // Render all dashboard components
-    async renderAllComponents() {
-        const renderPromises = [
-            this.renderMainStats(),
-            this.renderScoreDistribution(),
-            this.renderTopMatches(),
-            this.renderRecentActivity(),
-            this.renderInsights(),
-            this.renderActivityTimeline()
-        ];
-
-        await Promise.all(renderPromises);
-    }
-
-    // Render main statistics cards with animations
-    renderMainStats() {
-        const stats = this.data.statistics;
-        
-        // Animate counters with staggered timing
-        setTimeout(() => this.animateCounter('total-jobs', stats.total_jobs || 0), 100);
-        setTimeout(() => this.animateCounter('total-resumes', stats.total_resumes || 0), 200);
-        setTimeout(() => this.animateCounter('total-matches', stats.total_matches || 0), 300);
-        setTimeout(() => this.animateCounter('avg-score', stats.avg_score || 0, '%', 1), 400);
-
-        // Update additional metrics
-        const maxScoreEl = document.getElementById('max-score');
-        if (maxScoreEl) {
-            maxScoreEl.textContent = Number(stats.max_score || 0).toFixed(1);
-        }
-
-        // Update trend indicators
-        this.updateTrendIndicators(stats);
-    }
-
-    // Enhanced counter animation with easing
-    animateCounter(elementId, endValue, suffix = '', decimals = 0) {
-        const element = document.getElementById(elementId);
-        if (!element) return;
-
-        const startValue = 0;
-        const duration = 1500;
-        const startTime = performance.now();
-        
-        element.classList.add('counting');
-
-        const animate = (currentTime) => {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            
-            // Easing function for smooth animation
-            const easeOutCubic = 1 - Math.pow(1 - progress, 3);
-            const currentValue = startValue + (endValue - startValue) * easeOutCubic;
-            
-            element.textContent = currentValue.toFixed(decimals) + suffix;
-            
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            } else {
-                element.classList.remove('counting');
-            }
-        };
-
-        requestAnimationFrame(animate);
-    }
-
-    // Render score distribution with enhanced animations
-    renderScoreDistribution() {
-        const distribution = this.data.score_distribution || {};
-        const total = Object.values(distribution).reduce((sum, count) => sum + count, 0);
-
-        const ranges = [
-            { key: '90-100', id: '90-100' },
-            { key: '80-89', id: '80-89' },
-            { key: '70-79', id: '70-79' },
-            { key: '60-69', id: '60-69' },
-            { key: '<60', id: 'below-60' }
-        ];
-
-        ranges.forEach(({ key, id }, index) => {
-            const count = distribution[key] || 0;
-            const percentage = total > 0 ? (count / total) * 100 : 0;
-
-            const countEl = document.getElementById(`score-${id}`);
-            const barEl = document.getElementById(`bar-${id}`);
-
-            if (countEl) {
-                setTimeout(() => this.animateCounter(`score-${id}`, count), index * 100);
-            }
-
-            if (barEl) {
-                setTimeout(() => {
-                    barEl.style.width = `${percentage}%`;
-                }, index * 150);
-            }
-        });
-    }
-
-    // Render top matches with proper error handling
-    renderTopMatches() {
-        const container = document.getElementById('top-matches-list');
-        if (!container) return;
-
-        const matches = this.data.top_matches || [];
-
-        if (matches.length === 0) {
-            container.innerHTML = this.getEmptyState('No matches found', 'trophy');
-            return;
-        }
-
-        container.innerHTML = matches.map((match, index) => `
-            <div class="match-item" style="animation-delay: ${index * 100}ms;">
-                <div class="match-info">
-                    <div class="match-title">
-                        ${this.escapeHtml(match.cv_name)} → ${this.escapeHtml(match.job_title)}
-                    </div>
-                    <div class="match-details">
-                        <i class="fas fa-building"></i>
-                        ${this.escapeHtml(match.company || 'Unknown Company')}
-                        <i class="fas fa-calendar"></i>
-                        ${this.formatDate(match.matched_at)}
-                    </div>
-                </div>
-                <div class="match-score">${Number(match.score || 0).toFixed(1)}%</div>
-            </div>
-        `).join('');
-
-        // Add animation class
-        container.classList.add('animate-in');
-    }
-
-    // Render recent activity
-    renderRecentActivity() {
-        const container = document.getElementById('recent-activity-list');
-        if (!container) return;
-
-        const activities = this.data.recent_activity || [];
-
-        if (activities.length === 0) {
-            container.innerHTML = this.getEmptyState('No recent activity', 'clock');
-            return;
-        }
-
-        container.innerHTML = activities.map((activity, index) => `
-            <div class="match-item" style="animation-delay: ${index * 100}ms;">
-                <div class="match-info">
-                    <div class="match-title">
-                        ${this.escapeHtml(activity.cv_name)} → ${this.escapeHtml(activity.job_title)}
-                    </div>
-                    <div class="match-details">
-                        <i class="fas fa-building"></i>
-                        ${this.escapeHtml(activity.company || 'Unknown Company')}
-                        <i class="fas fa-clock"></i>
-                        ${this.formatRelativeTime(activity.matched_at)}
-                    </div>
-                </div>
-                <div class="match-score">${Number(activity.score || 0).toFixed(1)}%</div>
-            </div>
-        `).join('');
-
-        container.classList.add('animate-in');
-    }
-
-    // Render insights sections
-    renderInsights() {
-        this.renderInsightList('top-companies', this.data.top_companies, 'building');
-        this.renderInsightList('top-skills', this.data.top_skills, 'tools');
-        this.renderInsightList('experience-levels', this.data.experience_levels, 'graduation-cap');
-    }
-
-    // Render individual insight list
-    renderInsightList(containerId, data, icon) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-
-        const items = data || [];
-
-        if (items.length === 0) {
-            container.innerHTML = this.getEmptyState('No data available', icon);
-            return;
-        }
-
-        container.innerHTML = items.map((item, index) => `
-            <div class="insight-item" style="animation-delay: ${index * 50}ms;">
-                <span class="insight-name">${this.escapeHtml(item.name)}</span>
-                <span class="insight-count">${this.escapeHtml(String(item.count))}</span>
-            </div>
-        `).join('');
-
-        container.classList.add('animate-in');
-    }
-
-    // Enhanced activity timeline with Chart.js
-    renderActivityTimeline() {
-        try {
-            const canvas = document.getElementById('activity-chart');
-            if (!canvas) return;
-
-            const trends = this.data.weekly_trends || [];
-            
-            // Prepare chart data
-            const labels = trends.map(d => this.formatChartDate(d.date));
-            const matchesData = trends.map(d => d.matches || 0);
-            const scoresData = trends.map(d => d.avg_score || 0);
-
-            // Destroy existing chart
-            if (this.activityChart) {
-                this.activityChart.destroy();
-            }
-
-            // Create new chart
-            this.activityChart = new Chart(canvas, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [
-                        {
-                            label: 'Daily Matches',
-                            data: matchesData,
-                            yAxisID: 'yMatches',
-                            borderColor: '#4299e1',
-                            backgroundColor: 'rgba(66, 153, 225, 0.1)',
-                            tension: 0.4,
-                            fill: true,
-                            pointRadius: 5,
-                            pointHoverRadius: 8
-                        },
-                        {
-                            label: 'Average Score (%)',
-                            data: scoresData,
-                            yAxisID: 'yScore',
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            tension: 0.4,
-                            fill: true,
-                            pointRadius: 5,
-                            pointHoverRadius: 8
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            titleColor: 'white',
-                            bodyColor: 'white',
-                            borderColor: '#4299e1',
-                            borderWidth: 1
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                color: '#718096'
-                            }
-                        },
-                        yMatches: {
-                            type: 'linear',
-                            position: 'left',
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(113, 128, 150, 0.1)'
-                            },
-                            ticks: {
-                                color: '#718096',
-                                precision: 0
-                            },
-                            title: {
-                                display: true,
-                                text: 'Number of Matches',
-                                color: '#4a5568'
-                            }
-                        },
-                        yScore: {
-                            type: 'linear',
-                            position: 'right',
-                            beginAtZero: true,
-                            max: 100,
-                            grid: {
-                                drawOnChartArea: false
-                            },
-                            ticks: {
-                                color: '#718096',
-                                callback: (value) => `${value}%`
-                            },
-                            title: {
-                                display: true,
-                                text: 'Average Score (%)',
-                                color: '#4a5568'
-                            }
-                        }
-                    },
-                    animation: {
-                        duration: 1500,
-                        easing: 'easeInOutCubic'
-                    }
-                }
-            });
-
-        } catch (error) {
-            console.error('Failed to render activity timeline:', error);
-            this.showChartError();
-        }
-    }
-
-    // Utility functions
-    withPeriod(baseUrl, params = {}) {
-        const url = new URL(baseUrl, window.location.origin);
-        if (this.currentPeriod !== 'all') {
-            url.searchParams.set('period', this.currentPeriod);
-        }
-        Object.entries(params).forEach(([key, value]) => {
-            url.searchParams.set(key, value);
-        });
-        return url.toString();
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text || '';
-        return div.innerHTML;
-    }
-
-    formatDate(dateString) {
-        if (!dateString) return 'Unknown';
-        try {
-            return new Date(dateString).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-            });
-        } catch {
-            return dateString;
-        }
-    }
-
-    formatRelativeTime(dateString) {
-        if (!dateString) return 'Unknown';
-        try {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diff = now - date;
-            
-            const minutes = Math.floor(diff / 60000);
-            const hours = Math.floor(diff / 3600000);
-            const days = Math.floor(diff / 86400000);
-            
-            if (minutes < 60) return `${minutes}m ago`;
-            if (hours < 24) return `${hours}h ago`;
-            return `${days}d ago`;
-        } catch {
-            return dateString;
-        }
-    }
-
-    formatChartDate(dateString) {
-        if (!dateString) return '';
-        try {
-            return new Date(dateString).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric'
-            });
-        } catch {
-            return dateString;
-        }
-    }
-
-    getEmptyState(message, icon) {
-        return `
-            <div class="loading-state">
-                <div style="text-align: center; padding: 2rem; color: #718096;">
-                    <i class="fas fa-${icon}" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                    <p>${message}</p>
-                </div>
-            </div>
-        `;
-    }
-
-    // Loading and error states
-    showLoading() {
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay) overlay.classList.remove('hidden');
-    }
-
-    hideLoading() {
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay) overlay.classList.add('hidden');
-    }
-
-    showError(message) {
-        const alert = document.getElementById('error-alert');
-        const messageEl = document.getElementById('error-message');
-        
-        if (alert && messageEl) {
-            messageEl.textContent = message;
-            alert.style.display = 'flex';
-        }
-    }
-
-    hideError() {
-        const alert = document.getElementById('error-alert');
-        if (alert) alert.style.display = 'none';
-    }
-
-    // Error handling
-    handleError(message, error) {
-        console.error(message, error);
-        this.showError(`${message}: ${error.message}`);
-        this.hideLoading();
-    }
-
-    handleLoadError(error) {
-        this.retryCount++;
-        
-        if (this.retryCount < this.maxRetries) {
-            console.warn(`Load failed, retrying... (${this.retryCount}/${this.maxRetries})`);
-            setTimeout(() => this.loadInitialData(), 1000 * this.retryCount);
-        } else {
-            this.handleError('Failed to load dashboard data after multiple attempts', error);
-        }
-    }
-
-    // Auto-refresh functionality
-    startAutoRefresh() {
-        this.refreshInterval = setInterval(() => {
-            if (!document.hidden && !this.isLoading) {
-                this.loadInitialData();
-            }
-        }, 300000); // 5 minutes
-    }
-
-    stopAutoRefresh() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-            this.refreshInterval = null;
-        }
-    }
-
-    // Event handlers
-    async refreshAllData() {
-        await this.loadInitialData();
-    }
-
-    async refreshChart() {
-        try {
-            const response = await this.fetchWithTimeout(this.withPeriod(this.endpoints.main));
-            if (response.success) {
-                this.data.weekly_trends = response.weekly_trends || [];
-                this.renderActivityTimeline();
-            }
-        } catch (error) {
-            console.error('Failed to refresh chart:', error);
-        }
-    }
-
-    retryLoad() {
-        this.retryCount = 0;
-        this.hideError();
-        this.loadInitialData();
-    }
-
-    exportData() {
-        try {
-            const dataStr = JSON.stringify(this.data, null, 2);
-            const dataBlob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(dataBlob);
-            
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `analytics-${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            
-            URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error('Failed to export data:', error);
-            alert('Failed to export data. Please try again.');
-        }
-    }
-
-    viewAllMatches() {
-        window.location.href = '/matches/';
-    }
-
-    viewAllActivity() {
-        window.location.href = '/activity/';
-    }
-
-    handleKeyboardShortcuts(e) {
-        if (e.ctrlKey || e.metaKey) {
-            switch (e.key) {
-                case 'r':
-                    e.preventDefault();
-                    this.refreshAllData();
-                    break;
-                case 'e':
-                    e.preventDefault();
-                    this.exportData();
-                    break;
-            }
-        }
-    }
-
-    handleResize() {
-        if (this.activityChart) {
-            this.activityChart.resize();
-        }
-    }
-
-    handleVisibilityChange() {
-        if (document.hidden) {
-            this.stopAutoRefresh();
-        } else {
-            this.startAutoRefresh();
-        }
-    }
-
-    // Utility functions
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-
-    updatePerformanceMetrics(loadTime) {
-        this.performanceMetrics.loadTimes.push(loadTime);
-        this.performanceMetrics.lastSuccessfulLoad = new Date();
-        
-        // Keep only last 10 load times
-        if (this.performanceMetrics.loadTimes.length > 10) {
-            this.performanceMetrics.loadTimes.shift();
-        }
-    }
-
-    resetRetryCount() {
-        this.retryCount = 0;
-    }
-
-    updateLastUpdated() {
-        const element = document.getElementById('last-updated');
-        if (element) {
-            element.textContent = new Date().toLocaleTimeString();
-        }
-    }
-
-    updateTrendIndicators(stats) {
-        // This would require historical data to calculate trends
-        // For now, we'll use placeholder logic
-        const trends = {
-            jobs: '+5.2%',
-            resumes: '+12.8%',
-            matches: '+8.4%',
-            score: '+2.1%'
-        };
-
-        Object.entries(trends).forEach(([key, value]) => {
-            const element = document.getElementById(`${key}-change`);
-            if (element) {
-                const icon = value.startsWith('+') ? 'fa-arrow-up' : 'fa-arrow-down';
-                const color = value.startsWith('+') ? '#48bb78' : '#f56565';
-                element.innerHTML = `<i class="fas ${icon}"></i> ${value} from last week`;
-                element.style.color = color;
-            }
-        });
-    }
-
-    addAnimations() {
-        // Add staggered animations to cards
-        const cards = document.querySelectorAll('.metric-card, .chart-card, .detail-card, .insight-card');
-        cards.forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            
-            setTimeout(() => {
-                card.style.transition = 'all 0.6s ease-out';
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, index * 100);
-        });
-    }
-
-    showChartError() {
-        const container = document.querySelector('#activity-chart').parentElement;
-        container.innerHTML = `
-            <div class="chart-error" style="text-align: center; padding: 2rem; color: #e53e3e;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                <p>Failed to load chart data</p>
-                <button class="btn btn-small" onclick="dashboard.refreshChart()">Retry</button>
-            </div>
-        `;
-    }
-
-    getDefaultStats() {
-        return {
-            total_jobs: 0,
-            total_resumes: 0,
-            total_matches: 0,
-            avg_score: 0,
-            max_score: 0,
-            min_score: 0,
-            success_rate: 0
-        };
-    }
-
-    getDefaultDistribution() {
-        return {
-            '90-100': 0,
-            '80-89': 0,
-            '70-79': 0,
-            '60-69': 0,
-            '<60': 0
-        };
-    }
-
-    // Cleanup method
-    destroy() {
-        this.stopAutoRefresh();
-        if (this.activityChart) {
-            this.activityChart.destroy();
-        }
-        
-        // Remove event listeners
-        document.removeEventListener('keydown', this.handleKeyboardShortcuts);
-        document.removeEventListener('visibilitychange', this.handleVisibilityChange);
-        window.removeEventListener('resize', this.handleResize);
-    }
-
-    // Public API for debugging
-    getPerformanceMetrics() {
-        return {
-            ...this.performanceMetrics,
-            averageLoadTime: this.performanceMetrics.loadTimes.reduce((a, b) => a + b, 0) / this.performanceMetrics.loadTimes.length || 0,
-            isLoading: this.isLoading,
-            retryCount: this.retryCount,
-            currentPeriod: this.currentPeriod
-        };
-    }
-
-    // Health check method
-    async healthCheck() {
-        try {
-            const response = await this.fetchWithTimeout('/api/analytics/health/', 5000);
-            return response.status === 'healthy';
-        } catch {
-            return false;
-        }
-    }
+  }
+  /* === end added === */
+
+  /* ----------- Misc utils ----------- */
+  escape(s){ const d=document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+  prettyDate(s){ try{ return new Date(s).toLocaleDateString('en-US',{month:'short', day:'numeric'});}catch{return s||'';} }
+  formatDate(s){ try{ return new Date(s).toLocaleDateString('en-US',{month:'short', day:'numeric', year:'numeric'});}catch{return s||'Unknown';} }
+  formatRelative(s){
+    if (!s) return 'Unknown';
+    const dt = new Date(s), diff=(Date.now()-dt.getTime())/1000;
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    return `${Math.floor(diff/86400)}d ago`;
+  }
+  empty(message, icon='circle-info'){
+    return `
+      <div class="loading-state">
+        <div style="text-align:center; padding:2rem; color:#718096;">
+          <i class="fas fa-${icon}" style="font-size:2rem; margin-bottom:1rem; opacity:.5;"></i>
+          <p>${this.escape(message)}</p>
+        </div>
+      </div>`;
+  }
 }
 
-// Initialize dashboard when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    // Global dashboard instance for debugging
-    window.dashboard = new AnalyticsDashboard();
-    window.dashboard.init().catch(error => {
-        console.error('Failed to initialize dashboard:', error);
-    });
-});
-
-// Cleanup on page unload
-window.addEventListener('beforeunload', () => {
-    if (window.dashboard) {
-        window.dashboard.destroy();
-    }
-});
-
-// Service Worker registration for offline support (optional)
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(error => {
-        console.log('Service Worker registration failed:', error);
-    });
-}
-
-// Performance monitoring
-window.addEventListener('load', () => {
-    // Log performance metrics
-    if (window.performance && window.performance.timing) {
-        const loadTime = window.performance.timing.loadEventEnd - window.performance.timing.navigationStart;
-        console.log(`Dashboard loaded in ${loadTime}ms`);
-    }
-});
-
-// Error boundary for unhandled errors
-window.addEventListener('error', (event) => {
-    console.error('Global error:', event.error);
-    if (window.dashboard) {
-        window.dashboard.showError('An unexpected error occurred. Please refresh the page.');
-    }
-});
-
-// Promise rejection handler
-window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled promise rejection:', event.reason);
-    event.preventDefault();
-    if (window.dashboard) {
-        window.dashboard.showError('A network error occurred. Please check your connection.');
-    }
+document.addEventListener('DOMContentLoaded', ()=> {
+  window.dashboard = new AnalyticsDashboard();
+  window.dashboard.init();
 });
 </script>
+
+
+
+
+
 
 <!-- FontAwesome for icons -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
